@@ -1,0 +1,142 @@
+fileFormatVersion: 2
+guid: 39151600ea74845428b8de21710dae3f
+ModelImporter:
+  serializedVersion: 16
+  fileIDToRecycleName:
+    100000: //RootNode
+    100002: cristal_b.
+    100004: cristal_b_
+    100006: grifo_mono
+    100008: jabon_Cube
+    100010: jabonera_m
+    100012: nivel_lava
+    100014: pica_aguje
+    100016: prot_tapon
+    100018: soporte_l_
+    100020: soporte_r1
+    100022: soporte_r2
+    100024: soporte_r3
+    100026: soporte_r_
+    100028: soporte_r_ 1
+    100030: tapon_desa
+    100032: tuberia_de
+    400000: //RootNode
+    400002: cristal_b.
+    400004: cristal_b_
+    400006: grifo_mono
+    400008: jabon_Cube
+    400010: jabonera_m
+    400012: nivel_lava
+    400014: pica_aguje
+    400016: prot_tapon
+    400018: soporte_l_
+    400020: soporte_r1
+    400022: soporte_r2
+    400024: soporte_r3
+    400026: soporte_r_
+    400028: soporte_r_ 1
+    400030: tapon_desa
+    400032: tuberia_de
+    2300000: cristal_b.
+    2300002: cristal_b_
+    2300004: grifo_mono
+    2300006: jabon_Cube
+    2300008: jabonera_m
+    2300010: nivel_lava
+    2300012: pica_aguje
+    2300014: prot_tapon
+    2300016: soporte_l_
+    2300018: soporte_r1
+    2300020: soporte_r2
+    2300022: soporte_r3
+    2300024: soporte_r_
+    2300026: soporte_r_ 1
+    2300028: tapon_desa
+    2300030: tuberia_de
+    3300000: cristal_b.
+    3300002: cristal_b_
+    3300004: grifo_mono
+    3300006: jabon_Cube
+    3300008: jabonera_m
+    3300010: nivel_lava
+    3300012: pica_aguje
+    3300014: prot_tapon
+    3300016: soporte_l_
+    3300018: soporte_r1
+    3300020: soporte_r2
+    3300022: soporte_r3
+    3300024: soporte_r_
+    3300026: soporte_r_ 1
+    3300028: tapon_desa
+    3300030: tuberia_de
+    4300000: jabon_Cube
+    4300002: jabonera_m
+    4300004: tuberia_de
+    4300006: tapon_desa
+    4300008: prot_tapon
+    4300010: nivel_lava
+    4300012: pica_aguje
+    4300014: cristal_b_
+    4300016: soporte_r_
+    4300018: soporte_l_
+    4300020: soporte_r_
+    4300022: soporte_r1
+    4300024: soporte_r2
+    4300026: soporte_r3
+    4300028: grifo_mono
+    4300030: cristal_b.
+    9500000: //RootNode
+  materials:
+    importMaterials: 1
+    materialName: 0
+    materialSearch: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    optimizeGameObjects: 0
+    motionNodeName: 
+    animationCompression: 1
+    animationRotationError: .5
+    animationPositionError: .5
+    animationScaleError: .5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    clipAnimations: []
+    isReadable: 1
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 7
+    meshCompression: 0
+    addColliders: 0
+    importBlendShapes: 1
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    optimizeMeshForGPU: 1
+    weldVertices: 1
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVPackMargin: 4
+  tangentSpace:
+    normalSmoothAngle: 60
+    splitTangentsAcrossUV: 1
+    normalImportMode: 0
+    tangentImportMode: 1
+  importAnimation: 1
+  copyAvatar: 0
+  humanDescription:
+    human: []
+    skeleton: []
+    armTwist: .5
+    foreArmTwist: .5
+    upperLegTwist: .5
+    legTwist: .5
+    armStretch: .0500000007
+    legStretch: .0500000007
+    feetSpacing: 0
+    rootMotionBoneName: 
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  animationType: 2
+  additionalBone: 0
+  userData: 

@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 
 Project("{38A178CA-5D95-1856-5EA9-D2681BE01A99}") = "Unity3DProject", "Assembly-CSharp-firstpass.csproj", "{0AC218DE-D9D5-92DF-EC73-9B08D7219807}"
 EndProject
+Project("{38A178CA-5D95-1856-5EA9-D2681BE01A99}") = "Unity3DProject", "Assembly-CSharp.csproj", "{C2827E07-5118-BC0A-6D79-125437B7D2F3}"
+EndProject
 Project("{38A178CA-5D95-1856-5EA9-D2681BE01A99}") = "Unity3DProject", "Assembly-UnityScript-firstpass.unityproj", "{3E853643-1581-F894-022A-D7F47560A074}"
 EndProject
 Project("{38A178CA-5D95-1856-5EA9-D2681BE01A99}") = "Unity3DProject", "Assembly-UnityScript.unityproj", "{A49A835A-E781-30BC-2D6D-6BFBFAADAB0B}"
@@ -17,6 +19,10 @@ Global
 		{0AC218DE-D9D5-92DF-EC73-9B08D7219807}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0AC218DE-D9D5-92DF-EC73-9B08D7219807}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0AC218DE-D9D5-92DF-EC73-9B08D7219807}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C2827E07-5118-BC0A-6D79-125437B7D2F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C2827E07-5118-BC0A-6D79-125437B7D2F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C2827E07-5118-BC0A-6D79-125437B7D2F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C2827E07-5118-BC0A-6D79-125437B7D2F3}.Release|Any CPU.Build.0 = Release|Any CPU
 		{3E853643-1581-F894-022A-D7F47560A074}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{3E853643-1581-F894-022A-D7F47560A074}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3E853643-1581-F894-022A-D7F47560A074}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -29,7 +35,7 @@ Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
-					GlobalSection(MonoDevelopProperties) = preSolution
+																																																												GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = Assembly-CSharp.csproj
 		Policies = $0
 		$0.TextStylePolicy = $1

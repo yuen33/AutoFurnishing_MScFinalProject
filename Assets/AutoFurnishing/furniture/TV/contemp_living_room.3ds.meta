@@ -60,6 +60,17 @@ ModelImporter:
     4300016: sideboard
     4300018: closet
     4300020: big_sideboar
+    6400000: big_sideboar
+    6400002: bowl1
+    6400004: bowl2
+    6400006: bowl3
+    6400008: closet
+    6400010: shelf
+    6400012: shelfsuport
+    6400014: shelfsuport2
+    6400016: sideboard
+    6400018: turn_on_off
+    6400020: tv
     9500000: //RootNode
   materials:
     importMaterials: 1
@@ -80,9 +91,9 @@ ModelImporter:
     isReadable: 1
   meshes:
     lODScreenPercentages: []
-    globalScale: 7
+    globalScale: 8
     meshCompression: 0
-    addColliders: 0
+    addColliders: 1
     importBlendShapes: 1
     swapUVChannels: 0
     generateSecondaryUV: 0
@@ -98,7 +109,7 @@ ModelImporter:
     splitTangentsAcrossUV: 1
     normalImportMode: 0
     tangentImportMode: 1
-  importAnimation: 1
+  importAnimation: 0
   copyAvatar: 0
   humanDescription:
     human: []

@@ -30,6 +30,11 @@ ModelImporter:
     4300004: Cylinder
     4300006: tree
     4300008: leaves
+    6400000: Cylinder
+    6400002: Cylinder.001
+    6400004: Cylinder.002
+    6400006: leaves
+    6400008: tree
     9500000: //RootNode
   materials:
     importMaterials: 1
@@ -52,7 +57,7 @@ ModelImporter:
     lODScreenPercentages: []
     globalScale: 1
     meshCompression: 0
-    addColliders: 0
+    addColliders: 1
     importBlendShapes: 1
     swapUVChannels: 0
     generateSecondaryUV: 0
