@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
-using System.IO;
+//using System.IO;
 using System.Collections.Generic;//for List<T>, Queue<T>
 
 public class populatingT1 : MonoBehaviour {
@@ -24,8 +24,10 @@ public class populatingT1 : MonoBehaviour {
 	 * **:can be single bedroom/kitchen/reading room
 	 */
 	public static string floorName;
+	public static GameObject floorMesh;
 
-	//-----------------------------------------------
+	//-------------------Do not support many-to-one----------------------------
+	//e.g. "table to chair", "tv to chair" is not valid
 	public string[][] pairwiseTAG={
 		new string[]{"table","chair"},
 		new string[]{"tv","sofa"},
@@ -35,72 +37,943 @@ public class populatingT1 : MonoBehaviour {
 	};
 	//-----------------------------------------------
 
-	bool isInitialised=false;
-	bool isRunning=false;
-	bool isfinished=false;
 
+	public bool isInitialised=false;
+	public bool isStable=false;
+//	public bool isRunning=false;
+	public bool isfinished=false;
+	
+	List<string> nameList;
+	List<string[]> secondaryPairList;//{its primary pair name, its name}
+	Vector3[,] globalBestT1;//(center)(rotation)(extents) for global best record
+	Vector3[,] lastPosition;
+	List<GameObject> boxesT1;
+	
 	Vector3[][]Doors;//(namecode,wallID,0)(center)(extents) Vector3(width,depth,height)
 	Vector3[][]Fireplaces;//(namecode,wallID,0)(center)(extents) Vector3(width,depth,height)
 	Vector3[][]Windows;//(namecode,wallID,0)(center)(extents) Vector3(width,depth,height)
 
 	int populatingState=0;//max=num Of Populated furniture
-	int[] indiceT1;//in ascending order of furniture volumns (smallest to largest)
 	
-	public double globalBest=0;
-	public double currentScore;
-	public double lastScore;
-	public float step=1.2f;
+	public double globalBest=-999999;
+	public double currentDistanceScore;
+	double lastDistanceScore;
+	public double distanceScoreDifference;
+
+	public double currentSumOfScores;
+	double lastSumOfScores=-99999;
+	public double sumOfScoresDifference;
+
+	double[] lastSingleScores;
+	public double[] currentSingleScores;
+	public float step;
+	public double beta;
 	public int iteration=0;
-	int period=150;
-	Vector3[,] lastPosition; //(position)(rotation)
-	float distanceFactor=20;
-	double beta=1;
+	double distanceFactor;
 	float lastRotationY;
 	
 	// Use this for initialization
 	void Start () {
 		floorName="room_4_646";
+		floorMesh=GameObject.Find(floorName);
 		Room.enabled=true;
+		boxesT1=new List<GameObject>();
+//		Random.seed=Room.roomID;
+
 	}
-	
+
 	// Update is called once per frame
 	void Update () {
 		if(!isInitialised && PopulatingGuide.Instance.isfinished
 		   && InRoomRetrieval.Instance.isfinished){
 			initialization();
-			//...
+//			Time.timeScale=0;//pause the game
+//			getScore();
+			getOverallScore();
+//			Time.timeScale=1;//unpause the game
 
 			//-----End-----
 			isInitialised=true;
+			lastSumOfScores=currentDistanceScore;
 		}//if(PopulatingGuide.Instance.isfinished
+
+		if(isInitialised && !isStable){
+			foreach(GameObject box in boxesT1){
+				if(!isInRoom(box)) moveintotheRoom(boxesT1.IndexOf(box));
+			}
+
+			lastDistanceScore=currentDistanceScore;
+//			getScore();
+			getOverallScore();
+			if(Mathf.Abs((float)(currentDistanceScore-lastDistanceScore))<step){
+				isStable=true;
+			}
+		}
+
+		if(isStable && !isfinished){
+			
+			recordLastPosition();
+			stimulatedAnnealingControl();
+
+			//move
+			for(int i=0;i<populatingState;i++){
+				rotate(boxesT1[i]);
+				if(!isInRoom(boxesT1[i])){
+					moveintotheRoom(boxesT1.IndexOf(boxesT1[i]));
+				}else{
+					move(boxesT1[i],i);
+				}
+			}
+
+			/**
+			 * Scores handling
+			 */
+			lastSingleScores=new double[populatingState];
+			if(populatingState>currentSingleScores.Length){
+				for(int i=0;i<populatingState;i++){
+					if(i<populatingState-1){
+						lastSingleScores[i]=currentSingleScores[i];
+					}else{
+						//i=populatingState-1
+						lastSingleScores[i]=0;
+					}
+				}
+			}else{
+				System.Array.Copy(currentSingleScores,lastSingleScores,populatingState);
+			}
+
+			//version2+
+			getOverallScore();
+
+			//compare with globalbest
+			if(currentSumOfScores>=globalBest){
+				Debug.Log("---------------------------------------------FindGlobalBest="+globalBest+"!        ====iteration==="+iteration);
+				globalBest=currentSumOfScores;
+				recordToGlobalBest();
+			}
+
+			MetropolisHasting();
+
+			distanceScoreDifference=currentDistanceScore-lastDistanceScore;
+			sumOfScoresDifference=currentSumOfScores-lastSumOfScores;
+
+			lastSumOfScores=currentSumOfScores;
+			isStable=false;
+		}
+
+		if(Input.GetKeyDown(KeyCode.S)){
+			if(Time.timeScale==1){
+				Time.timeScale=0;
+				isStable=false;
+			}else{
+				Time.timeScale=1;
+			}
+		}
 	}//Update()
+
+	void MetropolisHasting(){
+
+		//Metropolis-Hasting
+		double MHDelta=beta*(currentSumOfScores-lastSumOfScores);
+		float lnp= Mathf.Log(Random.value);
+
+		if(MHDelta < lnp){
+			Debug.Log("lnp="+lnp);
+			Debug.Log("beta*(currentSumOfScores-lastSumOfScores)="+ MHDelta);
+			if(Random.value<0.95){
+				//the box with lower score compared to singlescore
+				//will be set to last stable position				
+				for(int i=0;i<populatingState;i++){
+					if(currentSingleScores[i]+currentDistanceScore<lastSingleScores[i]+lastDistanceScore){
+						boxesT1[i].transform.position=lastPosition[i,0];
+						boxesT1[i].transform.localEulerAngles=lastPosition[i,1];
+					}
+				}
+			}else{
+				Debug.Log("goToGlobalBest===========================================");
+				
+				goToGlobalBest();
+			}
+							
+		}
+//		else if(populatingState>2 && MHDelta<=0 && step>0.2 && Random.value>0.9){
+////			switchAnyTwo();
+////			int k=populatingState-1;
+////			int idx=Mathf.FloorToInt(Random.value*k %k)+1;//won't be the biggest cube
+//			jumpOne(populatingState-1);
+//		}
+
+	}
+
+	void recordToGlobalBest(){
+//		globalBestT1=new Vector3[nameList.Count,3];
+		for(int i=0;i<populatingState;i++){
+			globalBestT1[i,0]=boxesT1[i].collider.bounds.center;
+			globalBestT1[i,1]=new Vector3(0,0,0);
+			globalBestT1[i,1].y=boxesT1[i].transform.localEulerAngles.y;
+			globalBestT1[i,2]=boxesT1[i].collider.bounds.extents;
+		}
+	}
+	
+	void recordLastPosition(){
+		//Record position
+		lastPosition=new Vector3[populatingState,3];
+		Vector3[] entity=new Vector3[3];
+		entity[0]=new Vector3(0,0,0);
+		entity[1]=new Vector3(0,0,0);
+		entity[2]=new Vector3(0,0,0);
+		for(int i=0;i<populatingState;i++){
+			entity[0]=boxesT1[i].transform.position;
+			entity[1].y=boxesT1[i].transform.localEulerAngles.y;
+			entity[2]=boxesT1[i].collider.bounds.extents;
+			lastPosition[i,0]=entity[0];
+			lastPosition[i,1]=entity[1];
+			lastPosition[i,2]=entity[2];
+		}
+	}
+
+	void stimulatedAnnealingControl(){
+		iteration++;
+		//stimulated annealing control----------------------------
+		if(iteration> populatingState*populatingState*10){
+			if(populatingState==nameList.Count){
+				step=(float)(step*0.9998);
+			}else{
+				step=(float)(step*0.998);
+			}
+		}
+		if(step<0.1){
+			if(populatingState==nameList.Count){
+				isfinished=true;
+				return;
+			}
+			goToGlobalBest();
+			importInitialFurniture(nameList[populatingState]);
+			step=0.5f;
+
+//			Time.timeScale=0;
+		}else if(step<0.1 && populatingState==nameList.Count){
+			beta++;
+		}
+		//--------------------------------------------------------
+	}
+
+	//==========================goToGlobalBest()===================
+	void goToGlobalBest(){
+		for(int i=0;i<populatingState;i++){
+			boxesT1[i].transform.position=globalBestT1[i,0];
+			boxesT1[i].transform.localEulerAngles=globalBestT1[i,1];
+		}
+	}
+
+	//===========================jumpOne()======================
+	void jumpOne(int idx){
+		Vector3 newposition=getRandomPosition(idx);
+		boxesT1[idx].transform.position=newposition;
+	}
+
+	//============================switch()=======================
+	void switchAnyTwo(){
+		//switch two objects randomly
+		int[] RandomList=getRandomList(populatingState);
+		int a=RandomList[0];
+		int b=RandomList[1];
+
+		//switch two objects position
+		boxesT1[a].transform.position=lastPosition[b,0];
+		boxesT1[b].transform.position=lastPosition[a,0];
+	}
+
+	//============================rotate()========================
+	void rotate(GameObject furniture){
+		lastRotationY=furniture.transform.localEulerAngles.y;
+
+		Vector2 A=new Vector2(furniture.transform.position.x,furniture.transform.position.z);
+		int wallID=InRoomRetrieval.FindWall(A);
+		int cornerID=findNearestCornerID(new Vector3(A.x,0,A.y));
+		float walldistance=InRoomRetrieval.DistanceToRay2D(
+			A,
+			new Vector2(Room.walls[wallID,0].x,Room.walls[wallID,0].z),
+			new Vector2(Room.walls[wallID,1].x,Room.walls[wallID,1].z));
+		float cornerdistance=(new Vector2(Room.floorCorners[cornerID].x,
+		                                  Room.floorCorners[cornerID].z)
+		                      -A).magnitude;
+		
+		float furnitureX=furniture.collider.bounds.extents.x;
+		float furnitureZ=furniture.collider.bounds.extents.z;
+		float furnitureXZ=new Vector2(furnitureX,furnitureZ).magnitude;
+		
+//		Vector3 from=furniture.transform.localEulerAngles;
+		Vector3 from=new Vector3(0,0,1);
+		Vector3 to;
+		float rotationY=0;
+
+		//big furniture: same with nearest wall's normal
+		if(walldistance<=furnitureXZ){
+			//keep last rotation
+			rotationY=lastRotationY;
+		}else if(walldistance<=furnitureXZ+10){
+			to=Room.walls[wallID,2];
+			rotationY=Vector3.Angle(from,to);//+(Random.value-0.5f)*5;
+//			if(walldistance<furnitureZ){
+//				/**
+//				 * bed-like furniture moving to corner
+//				 * rotate to the direction along the nearest wall
+//				 * from closest corner pointing to the wall's another corner
+//				 */
+//				//find the closest corner is which point of the wall line
+//				int biggestWallIdx=Room.walls.GetLength(0)-1;
+//				if(Room.floorCorners[cornerID]==Room.walls[wallID,0]){
+//					//the nearest corner is the nearest wall's starting point
+//					//so bed should point along the former wall's normal
+//					if(wallID==0){
+//						to=Room.walls[biggestWallIdx,2];
+//					}else{
+//						to=Room.walls[wallID-1,2];
+//					}
+//
+//				}else{
+//					//the nearest corner is the nearest wall's ending point
+//					//so bed should point along the later wall's normal
+//					if(wallID==biggestWallIdx){
+//						to=Room.walls[0,2];
+//					}else{
+//						to=Room.walls[wallID+1,2];
+//					}
+//
+//				}
+//				rotationY=Vector3.Angle(from,to);
+//
+//			}else{
+//				to=Room.walls[wallID,2];
+//				rotationY=Vector3.Angle(from,to);//+(Random.value-0.5f)*5;
+//			}
+		}//if it near to wall
+		else{//keep last rotation
+			rotationY=lastRotationY;
+		}
+
+		//from now to the nearest wall normal vector
+		furniture.transform.localEulerAngles=new Vector3(0,rotationY,0);
+	}//rotate()
+	
+	//-------------------------move()------------------------------
+	void move(GameObject furniture,int id){
+//		lastRotationY=furniture.transform.localEulerAngles.y;
+		Vector3 movingDirection;
+		
+//		if(isInRoom(furniture)){//make sure it hasn't been out of the room
+			movingDirection=new Vector3(Random.value-0.5f,0.0f,Random.value-0.5f);
+			movingDirection=movingDirection.normalized;
+			furniture.rigidbody.MovePosition(furniture.transform.position+ movingDirection*step);
+
+			
+//		}else{//(if has been out of the room) 
+//			moveintotheRoom(id);
+//		}
+		
+		//		furniture.transform.position=furniture.transform.position+ movingDirection*step;
+	}
+	void moveintotheRoom(int id){
+		Vector3 movingDirection;
+		Debug.Log("It's OUT!======================================");
+//		jumpOne(id);
+
+		//			//put it back to last position
+		//			boxesT1[id].transform.position=lastPosition[id,0];
+		//			boxesT1[id].transform.localEulerAngles=lastPosition[id,1];
+
+//		//move towards room center
+//		Vector3 D=Room.roomCenter-furniture.transform.position;
+//		movingDirection=new Vector3(D.x ,0.0f, D.z);
+//		movingDirection=movingDirection.normalized;
+//		furniture.rigidbody.MovePosition(furniture.transform.position+ movingDirection*0.2f);
+
+		//moving along nearest wall normal
+		Vector3 Pi=boxesT1[id].collider.bounds.center;
+		int wallID_Pi=InRoomRetrieval.FindWall(new Vector2(Pi.x,Pi.z));
+		movingDirection=Room.walls[wallID_Pi,2];//wall normal
+//		furniture.rigidbody.MovePosition(furniture.transform.position+ movingDirection*0.2f);
+		boxesT1[id].transform.position=boxesT1[id].transform.position+ movingDirection*0.2f;
+
+	}
+	//-------------------------move()------------------------------
+
+	bool isInRoom(GameObject box){
+		Vector3 center=box.collider.bounds.center;
+		center.y=floorMesh.collider.bounds.center.y;
+
+//		Vector3 boundsMIN=box.collider.bounds.min;
+//		Vector3 boundsMAX=box.collider.bounds.max;
+//		Vector3[] corners=new Vector3[4];
+//		corners[0]=new Vector3(boundsMIN.x, y,boundsMIN.z);
+//		corners[1]=new Vector3(boundsMIN.x, y,boundsMAX.z);
+//		corners[2]=new Vector3(boundsMAX.x, y,boundsMAX.z);
+//		corners[3]=new Vector3(boundsMAX.x, y,boundsMIN.z);
+//
+//		foreach(Vector3 corner in corners){
+//			if(!floorMesh.collider.bounds.Contains(corner)){
+//				return false;
+//			}
+//		}
+
+		return floorMesh.collider.bounds.Contains(center);
+	}
+
+	int findNearestCornerID(Vector3 Pi){
+		int wallID_Pi=InRoomRetrieval.FindWall(new Vector2(Pi.x,Pi.z));
+		//find nearest corner
+		float[] distances2D=new float[Room.floorCorners.Length];
+		for(int j=0;j<Room.floorCorners.Length;j++){
+			distances2D[j]=(new Vector2(Pi.x,Pi.z)-
+			                new Vector2(Room.floorCorners[j].x,
+			            Room.floorCorners[j].z)).magnitude;
+		}
+		int cornerID_Pi=InRoomRetrieval.findSmallestIDAt(distances2D);
+		return cornerID_Pi;
+	}
+	
+	//-------------------------getScore()------------------------------
+	void getOverallScore(){
+		distanceFactor=1;
+		getAllDistanceScore();
+		currentSumOfScores=currentDistanceScore;
+		currentSingleScores=new double[populatingState];
+		for(int i=0;i<populatingState;i++){
+			getSingleScore(i);
+			currentSumOfScores+=currentSingleScores[i];
+		}
+//		Debug.Log("    currentSumOfScores="+currentSumOfScores);
+	}
+
+	void getAllDistanceScore(){
+		double SumsumOfDistance=0;// large= :)
+		for(int i=0;i<populatingState;i++){
+			/**
+			 * Distance term
+			 */
+			Vector3 Pi=boxesT1[i].transform.position;
+			for(int j=i+1;j<populatingState;j++){
+				Vector3 Pj=boxesT1[j].transform.position;
+				float di=(Pi-Pj).magnitude;
+				SumsumOfDistance=SumsumOfDistance+(Pi-Pj).magnitude;
+			}
+		}//for i<populatingState	
+		currentDistanceScore=distanceFactor*SumsumOfDistance;
+
+//		Debug.Log("    SumsumOfDistance="+SumsumOfDistance);
+	}//getDistanceScore()
+
+	void getSingleScore(int i){
+		/**
+		 * Door, windows and fireplace term:
+		 * Vector3[][]Doors windows Fireplaces: (namecode,wallID,0)(center)(extents) Vector3(width,depth,height)
+		 * Vector3[,] walls: (start point)(end point)(normal to inside the room)
+		 */
+		/**
+		 * Nearest wall and corner term
+		 */
+		Vector3 Pi=boxesT1[i].transform.position;
+		Vector3 Ei=boxesT1[i].collider.bounds.extents;
+
+		Vector2 A=new Vector2(Pi.x,Pi.z);
+		int wallID=InRoomRetrieval.FindWall(A);
+		int cornerID=findNearestCornerID(new Vector3(A.x,0,A.y));
+
+		float walldistance=InRoomRetrieval.DistanceToRay2D(
+			A,
+			new Vector2(Room.walls[wallID,0].x,Room.walls[wallID,0].z),
+			new Vector2(Room.walls[wallID,1].x,Room.walls[wallID,1].z))
+			-Ei.z;
+		walldistance=Mathf.Max(walldistance,0);
+		float cornerdistance=(new Vector2(Room.floorCorners[cornerID].x,
+		                                  Room.floorCorners[cornerID].z)
+		                      -A).magnitude-new Vector2(Ei.x,Ei.z).magnitude;
+		cornerdistance=Mathf.Max(cornerdistance,0);
+
+		double NearestWallDistanceScore=100/(walldistance+1)/(i+1);
+		double NearestCornerDistanceScore=100/(cornerdistance+1)/(i+1);
+
+		/**
+		 * Rotation check
+		 */
+		float rotationY=boxesT1[i].transform.localEulerAngles.y;
+		float targetedRY=Vector3.Angle(new Vector3(0,0,1),Room.walls[wallID,2]);
+		if(Mathf.Abs(rotationY-targetedRY)>45){
+			NearestWallDistanceScore=NearestWallDistanceScore/2;
+		}
+		
+
+		/**
+		 * Window shielded score
+		 */
+		double WindowShieldedScore=0;
+		for(int j=0;j<Windows.GetLength(0);j++){
+			float cosTheta=0;
+			float windowDistance=0;
+			int windowWall=(int)Windows[j][0].y;
+			//if the box nearest wall is the window wall
+			if(wallID==windowWall){
+				//the box should not be higher than the window:
+				//windowcenter.y-boxcenter.y
+				float heightDelta=Windows[j][1].y-Pi.y;
+				//>0 and even > sum of two extents in Y
+				//alow furniture that a litter higher than window lowest bounds
+				if(heightDelta<Windows[j][2].y*0.8f+Ei.y){
+					//cos(theta)
+					Vector3 pointingtoPi=Pi-Windows[j][1];//pointing to Pi
+					pointingtoPi.y=0;
+					//----2D distance
+					windowDistance=pointingtoPi.magnitude;
+					windowDistance-=Mathf.Max(boxesT1[i].collider.bounds.extents.x,
+					                          boxesT1[i].collider.bounds.extents.z);
+					windowDistance=Mathf.Max(windowDistance,0);
+
+					pointingtoPi=pointingtoPi.normalized;//and normalise it
+					//the normalized wall normal * pointingtoPi
+					cosTheta=Vector3.Dot(Room.walls[windowWall,2],pointingtoPi);
+				}//if box is lower than the window, it doesn't matter
+			}//if the box is not near to the window, it's doesn't matter too
+			WindowShieldedScore+=windowDistance/(cosTheta+1);
+		}
+
+		/**
+		 * Fireplace shielded score
+		 */
+		double FireplaceShieldedScore=0;
+		for(int j=0;j<Fireplaces.GetLength(0);j++){
+			float cosTheta=0;
+			float FireplaceDistance=0;
+			int fireplaceWall=(int)Fireplaces[j][0].y;
+			//if the box nearest wall is the fireplace wall
+			if(wallID==fireplaceWall){
+				//cos(theta)
+				Vector3 pointingtoPi=Pi-Fireplaces[j][1];//pointing to Pi
+				pointingtoPi.y=0;
+				//----2D distance
+				FireplaceDistance=pointingtoPi.magnitude;
+				FireplaceDistance-=Mathf.Max(boxesT1[i].collider.bounds.extents.x,
+				                             boxesT1[i].collider.bounds.extents.z);
+				FireplaceDistance=Mathf.Max(FireplaceDistance,0);
+				//if center 2d distance larger than fireplace depth*1.5
+				if(FireplaceDistance<=Fireplaces[j][3].y*1.5f){
+					pointingtoPi=pointingtoPi.normalized;//and normalise it
+					//the normalized wall normal * pointingtoPi
+					cosTheta=Vector3.Dot(Room.walls[fireplaceWall,2],pointingtoPi);
+				}//else ignore
+			}//else ignore
+
+			FireplaceShieldedScore+=FireplaceDistance/(cosTheta+1);
+		}
+
+		/**
+		 * Door path score
+		 */
+//		Debug.Log(boxesT1[i].name+" corner score was "+NearestCornerDistanceScore);
+		double DoorPathScore=0;
+		for(int j=0;j<Doors.GetLength(0);j++){
+			float cosTheta=0;
+			float DoorDistance=0;
+			int doorCorner=findNearestCornerID(Doors[j][1]);
+			if(cornerID==doorCorner){
+				NearestCornerDistanceScore=0;
+//				Debug.Log(boxesT1[i].name+" near door");
+				int doorWall=(int)Doors[j][0].y;
+				//cos(theta)
+				Vector3 pointingtoPi=Pi-Doors[j][1];//pointing to Pi
+				pointingtoPi.y=0;
+				//----2D distance
+				float doorDistance=pointingtoPi.magnitude;
+				doorDistance-=Mathf.Max(boxesT1[i].collider.bounds.extents.x,
+				                        boxesT1[i].collider.bounds.extents.z);
+				doorDistance=Mathf.Max(doorDistance,0);
+				pointingtoPi=pointingtoPi.normalized;//then normalise it
+				//the normalized wall normal * pointingtoPi
+				cosTheta=Vector3.Dot(Room.walls[doorWall,2],pointingtoPi);
+			}//else it should move far away from doors
+//			else{
+//				int former;
+//				int latter;
+//				switch(doorCorner){
+//				case 0:
+//					former=Room.floorCorners.Length-1;
+//					latter=doorCorner+1;
+//					break;
+//				case Room.floorCorners.Length-1:
+//					former=doorCorner-1;
+//					latter=0;
+//					break;
+//				default:
+//					former=doorCorner-1;
+//					latter=doorCorner+1;
+//					break;
+//				}
+//				if(cornerID==former || cornerID==latter){
+//					//TODO?
+//				}
+//			}
+
+			DoorPathScore+=(DoorDistance+1)/(cosTheta+1);
+		}
+//		Debug.Log(boxesT1[i].name+" DoorPathScore become "+DoorPathScore);
+
+
+//		Debug.Log("NearestWallDistanceScore "+NearestWallDistanceScore);
+//		Debug.Log("NearestCornerDistanceScore"+NearestCornerDistanceScore);
+//		Debug.Log("DoorPathScore "+DoorPathScore);
+//		Debug.Log("WindowShieldedScore "+WindowShieldedScore);
+//		Debug.Log("FireplaceShieldedScore "+FireplaceShieldedScore);
+
+		currentSingleScores[i]=
+			NearestWallDistanceScore+NearestCornerDistanceScore
+				+DoorPathScore+WindowShieldedScore+FireplaceShieldedScore;
+
+	}//getSingleScore()
+	//-------------------------getScore()------------------------------
+
 
 	//-------------------------initialization()--------------------------
 	void initialization(){
 		getKnownFloorplanFurniture();
-		determineFurniture();
-
-
+		determineInitialFurniture();
+		/**
+		 * import the furniture from name
+		 */
+		int i=0;
+		foreach(string name in nameList){
+			if(i>1) break;
+			i++;
+			importInitialFurniture(name);
+		}
 
 	}
 	//-------------------------initialization()--------------------------
 
-	void determineFurniture(){
-		int NumOfRows=PopulatingGuide.Instance.furnitureArray.GetLength(0);
-		double rank=PopulatingGuide.Instance.areaRank;
-		if(rank>0.5){//is a large room of the house
-//			int k=PopulatingGuide.Instance.furnitureArray.GetLength(1);
-			int i=0;
-			int j=0;
-			while(PopulatingGuide.Instance.furnitureArray[i][j]!=null){
-				Debug.Log(i+j);
-			}
-
-		}else{//is a small room of the house
-
+	void determineInitialFurniture(){//is a big room of the house
+		nameList=new List<string>();
+		/**
+		 * get all initially imported furniture names
+		 */
+		//add all first line furniture
+		string[][] furarray=PopulatingGuide.Instance.furnitureArray;
+		int NumOfItems=furarray[0].Length;
+		foreach(string element in furarray[0]){
+			nameList.Add(element);
 		}
 
+		//add other furniture randomly
+		int NumOfRows=furarray.GetLength(0);
+		double rank=PopulatingGuide.Instance.areaRank;
+		if(rank>0.5){//is a large room of the house
+
+			//add any one in 2nd line
+			NumOfItems=furarray[1].Length;
+			int idx=Mathf.FloorToInt(Random.value*NumOfItems %NumOfItems);
+			nameList.Add(furarray[1][idx]);
+
+			//add all furniture from one of rest lines
+			if(NumOfRows>2){
+				int restrows=NumOfRows-2;
+				int rowth=2+ Mathf.FloorToInt(Random.value *restrows %restrows);//Mathf.CeilToInt will exceed idx range
+				foreach(string element in furarray[rowth]){
+					nameList.Add(element);
+				}
+			}//if numofrow>2
+
+		}else if(rank>0.25){//is a small room of the house
+			//any one of the rest
+			int restrow=NumOfRows-1;
+			int rowth=1+Mathf.FloorToInt(Random.value *restrow %restrow);
+			NumOfItems=furarray[rowth].Length;
+			int idx=Mathf.FloorToInt(Random.value*NumOfItems %NumOfItems);
+			nameList.Add(furarray[rowth][idx]);
+
+		}//else: rank<0.25 add nothing more
+
+		/**
+		 * Find out whether there is any pairwise in the nameList
+		 */
+//		Debug.Log(nameList.Count);
+//		foreach(string name in nameList){
+//			Debug.Log(name);
+//		}
+
+		secondaryPairList=new List<string[]>();
+		for(int i=0;i<pairwiseTAG.GetLength(0);i++){
+			string pair1=pairwiseTAG[i][1];
+			//find any pair1 in namelist
+//				Debug.Log("-----------------------------pairwisetag i="+i);
+			for(int j=0;j<nameList.Count;j++){
+//				Debug.Log(pair1+" is ?"+nameList[j]);
+				
+				if(pair1.Equals(nameList[j])){
+//				Debug.Log("YES!");
+					
+					string pair0=pairwiseTAG[i][0];
+					//find whether pair0 is in too
+					foreach(string name in nameList){
+//				Debug.Log(nameList[j]+"'s pair0 is?"+name);
+						
+						if(name.Equals(pair0)){
+//				Debug.Log("YES! And remove "+nameList[j]);
+							
+							secondaryPairList.Add(new string[]{name,nameList[j]});
+							nameList.Remove(nameList[j]);
+							//not allow two pair0 to one pair1
+							break;//foreach
+						}//if find pair0
+					}//foreach in namelist
+				}//if find pair1
+
+				//break;//if break here, pairwise only one to one
+				//if not break here, pairwise can be one to many:
+				//e.g. one bed with two bedside_table
+			}//for loop: try to find pair1 in namelist
+		}//for loop: all pair1 in pairwiseTAG
+
+//		Debug.Log(nameList.Count);
+//		foreach(string name in nameList){
+//			Debug.Log(name);
+//		}
+
+//		//remove pair1 in namelist
+//		foreach(string[] pairwise in secondaryPairList){
+//			nameList.Remove(pairwise[1]);
+//			Debug.Log("========================Removed:"+pairwise[1]);
+//		}
+
+		/**
+		 * Sort these initial furniture by volumn==> change to by X-Z 2D area
+		 */
+		Vector3[] extents=new Vector3[nameList.Count];
+		double[] areas=new double[nameList.Count];
+		int[] indiceT1=new int[nameList.Count];
+		for(int i=0;i<nameList.Count;i++){
+			//Find objects with the tag in name, and choose any one of them
+			GameObject[] gos;
+			gos = GameObject.FindGameObjectsWithTag(nameList[i]);
+			int idx=Mathf.FloorToInt(Random.value* gos.Length %gos.Length);
+			nameList[i]=gos[idx].name;
+			Vector3[] array=GetVerticesInChildren(gos[idx]);
+			extents[i]=GetFurnitureExtents(array);
+			areas[i]=4*extents[i].x *extents[i].z;
+			indiceT1[i]=i;
+		}
+		System.Array.Sort(areas,indiceT1);
+
+		string[] names=nameList.ToArray();
+		nameList.Clear();
+
+//		foreach(int i in indiceT1) Debug.Log(i);
+
+		//(center)(rotation)(extents)
+		globalBestT1=new Vector3[indiceT1.Length,3];
+		int counter=0;
+		for(int i=indiceT1.Length-1;i>=0;i--){
+			//I wish to make the larger furniture has positioning priority
+			globalBestT1[counter,0]=new Vector3(0,0,0);
+			globalBestT1[counter,1]=new Vector3(0,0,0);
+			globalBestT1[counter,2]=extents[indiceT1[i]];
+			counter++;
+			nameList.Add(names[indiceT1[i]]);
+		}
+
+
 	}//determineFurniture()
+
+	void importInitialFurniture(string name){
+		if(populatingState<2){
+			/**
+		 	 * Make sure the decided furniture is not too big for the room
+		 	 */
+			Vector3 position=new Vector3(0,0,0);
+			float rotationY=0;
+			//1. half diagonal lines comparing
+			Vector3 PiEx=globalBestT1[populatingState,2];
+			Vector3 RoEx=floorMesh.collider.bounds.extents;
+			//first check whether there is a wall is long enough
+			float[] wallLengths=new float[Room.walls.GetLength(0)];
+			int[] indices=new int[wallLengths.Length];
+			for(int i=0;i<wallLengths.Length;i++){
+				//wall's starting point - ending point
+				wallLengths[i]=(Room.walls[i,0]-Room.walls[i,1]).magnitude;
+				indices[i]=i;
+			}
+			System.Array.Sort(wallLengths,indices);//from shortest to largest
+			if(Mathf.Max(PiEx.x,PiEx.z)>Mathf.Max(RoEx.x,RoEx.z) ||
+			   Mathf.Min(PiEx.x,PiEx.z)>Mathf.Min(RoEx.x,RoEx.z) ||
+			   new Vector2(PiEx.x,PiEx.z).magnitude>Room.roomDiagonalXZ ||
+			   wallLengths[wallLengths.Length-1]<PiEx.x*2f){
+				//last one: the longest wall is shorter than this furniture
+				//it will waste too many space even if it could be imported
+				Debug.Log("Unexpected situation: Furniture "+name+"is too large for this room");
+				nameList.Remove(name);
+				return;
+			}else if(new Vector2(PiEx.x,PiEx.z).magnitude>=Mathf.Max(RoEx.x,RoEx.z)){
+				Debug.Log(name+" is huge box");
+				//extremly big furniture but importable with fixed suitable rotation
+				//e.g. a kitchen oven ect. table can fill half kitchen
+				//put it in center and with longest wall normal rotation
+				position=new Vector3(0,PiEx.y,0)+Room.roomCenter;
+				rotationY=Vector3.Angle(new Vector3(0,0,0),
+				                        Room.walls[indices[indices.Length-1],2]);
+				GameObject huge;
+				huge=GameObject.CreatePrimitive(PrimitiveType.Cube);
+				huge.transform.localScale=PiEx*2;//extentes
+				Debug.Log(huge.transform.localScale);
+				huge.AddComponent<BoxCollider>();
+				huge.AddComponent<Rigidbody>();
+				//with right rotation
+				huge.transform.localEulerAngles=new Vector3(0,rotationY,0);
+				huge.transform.position=position;
+				huge.rigidbody.mass=10;
+				huge.rigidbody.drag=10;
+				huge.rigidbody.angularDrag=0.8f;
+				huge.rigidbody.constraints =RigidbodyConstraints.FreezePositionY;
+				huge.rigidbody.freezeRotation=true;
+				huge.rigidbody.interpolation=RigidbodyInterpolation.Extrapolate;
+				huge.rigidbody.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;
+				//it can't be rotate by physics engine
+//				huge.rigidbody.constraints &=~RigidbodyConstraints.FreezeRotationY;
+				huge.rigidbody.rotation=Quaternion.identity;
+				huge.name=name;
+				boxesT1.Add(huge);
+				populatingState++;
+				Debug.Log(name);
+				
+				return;
+				
+				//but if it's bed.. it's OK, accessible too
+			}else{
+				commonlyImport(name);
+			}
+		}//if populating state<2
+		else{
+			commonlyImport(name);
+		}//populating state>=2 imported anyway
+	}//importInitialFurniture()
+
+	void commonlyImport(string name){
+		GameObject box;
+		box=GameObject.CreatePrimitive(PrimitiveType.Cube);
+		box.transform.localScale=globalBestT1[populatingState,2]*2;//extents
+		Debug.Log(box.transform.localScale);
+		
+		box.AddComponent<BoxCollider>();
+		box.AddComponent<Rigidbody>();
+		box.transform.position=new Vector3(0,box.collider.bounds.extents.y,0)+
+			getRandomPosition(populatingState);
+		box.rigidbody.mass=10;
+		box.rigidbody.drag=10;
+		box.rigidbody.angularDrag=1;
+		box.rigidbody.constraints =RigidbodyConstraints.FreezePositionY;
+		box.rigidbody.freezeRotation=true;
+		box.rigidbody.interpolation=RigidbodyInterpolation.Extrapolate;
+		box.rigidbody.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;
+		box.rigidbody.constraints &=~RigidbodyConstraints.FreezeRotationY;
+		//		box.rigidbody.constraints &=RigidbodyConstraints.FreezeRotationX;
+		//		box.rigidbody.constraints &=RigidbodyConstraints.FreezeRotationZ;
+		box.rigidbody.rotation=Quaternion.identity;
+		box.name=name;
+		boxesT1.Add(box);
+		populatingState++;
+		Debug.Log(name);
+	}
+
+	Vector3 getRandomPosition(int id){
+		Vector3 randomPosition=new Vector3(0,0,0);
+		Vector3 extentsDifference= Room.roomExtents- globalBestT1[id,2];//extents
+		float radius=Mathf.Sqrt(extentsDifference.x*extentsDifference.x
+		                        + extentsDifference.z *extentsDifference.z);
+
+		bool isFound=false;
+		do{
+			//make sure the randomposition is in room
+			randomPosition.x=Room.roomCenter.x-extentsDifference.x+ Random.value*2*extentsDifference.x;
+			randomPosition.z=Room.roomCenter.z-extentsDifference.z+ Random.value*2*extentsDifference.z;
+			randomPosition.y=Room.roomCenter.y;
+
+			if(populatingState!=0){
+				for(int j=0;j<populatingState;j++){
+					Vector3 PiEx=globalBestT1[id,2];
+					Vector3 c0=randomPosition-PiEx;
+					if(boxesT1[j].collider.bounds.Contains(c0)) break;
+					Vector3 c2=randomPosition+PiEx;
+					if(boxesT1[j].collider.bounds.Contains(c2)) break;
+					Vector3 c1=c0;
+					c1.z=c2.z;
+					if(boxesT1[j].collider.bounds.Contains(c1)) break;
+					Vector3 c3=c2;
+					c3.x=c0.x;
+					if(boxesT1[j].collider.bounds.Contains(c3)) break;
+
+					if(j==populatingState-1) isFound=true;
+				}
+
+			}else{
+				//populatingstate==0
+				isFound=true;
+			}
+
+		}while(!isFound);
+
+		return randomPosition;
+	}//getPosition()
+
+
+
+	Vector3[] GetVerticesInChildren(GameObject go) {
+		MeshFilter[] mfs = go.GetComponentsInChildren<MeshFilter>();
+		List<Vector3> vList = new List<Vector3>();
+		foreach (MeshFilter mf in mfs) {
+			vList.AddRange (mf.mesh.vertices);
+		}
+		return vList.ToArray ();
+	}
+
+	Vector3 GetFurnitureExtents(Vector3[] vertices){
+		float xmax=-99999;
+		float xmin=99999;
+		float ymax=-99999;
+		float ymin=99999;
+		float zmax=-99999;
+		float zmin=99999;
+		for(int i=0;i<vertices.Length;i++){
+			xmax = Mathf.Max (xmax, vertices[i].x);
+			xmin = Mathf.Min (xmin, vertices[i].x);
+			ymax = Mathf.Max (ymax, vertices[i].y);
+			ymin = Mathf.Min (ymin, vertices[i].y);
+			zmax = Mathf.Max (zmax, vertices[i].z);
+			zmin = Mathf.Min (zmin, vertices[i].z);
+		}//for
+		Vector3 extents=new Vector3(xmax-xmin,ymax-ymin,zmax-zmin);
+		extents=extents*0.5f;
+		return extents;
+	}
+
+//	/**
+//	 * return (xmin,ymin,zmin) and (xmax,ymax,zmax)
+//	 */
+//	Vector3[] GetBoundingBoxCorners(Vector3[] vertices){
+//		float xmax=-99999;
+//		float xmin=99999;
+//		float ymax=-99999;
+//		float ymin=99999;
+//		float zmax=-99999;
+//		float zmin=99999;
+//		for(int i=0;i<vertices.Length;i++){
+//			xmax = Mathf.Max (xmax, vertices[i].x);
+//			xmin = Mathf.Min (xmin, vertices[i].x);
+//			ymax = Mathf.Max (ymax, vertices[i].y);
+//			ymin = Mathf.Min (ymin, vertices[i].y);
+//			zmax = Mathf.Max (zmax, vertices[i].z);
+//			zmin = Mathf.Min (zmin, vertices[i].z);
+//		}//for
+//		Vector3[] extents=new Vector3[2];
+//		extents[0]=new Vector3(xmin,ymin,zmin);
+//		extents[1]=new Vector3(xmax,ymax,zmax);
+//		return extents;
+//	}
 
 	void getKnownFloorplanFurniture(){
 		/**
@@ -135,6 +1008,8 @@ public class populatingT1 : MonoBehaviour {
 				//position is the fireplace center move towards wall normal with fireplace depth
 				fireplaceBlock.transform.position=InRoomRetrieval.Instance.floorplanFurniture[i][1]+
 					Room.walls[wallID,2]*depth;
+
+				fireplaceBlock.AddComponent("CollisionHandler");
 				
 				list3.Add(InRoomRetrieval.Instance.floorplanFurniture[i]);
 				break;

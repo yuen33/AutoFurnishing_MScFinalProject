@@ -61,7 +61,7 @@ public class Room : MonoBehaviour {
 	// Update is called once per frame
 	void Update () {
 		if(enabled){
-			furnishingRoom=GameObject.Find(populatingT1.floorName);
+			furnishingRoom=populatingT1.floorMesh;
 			
 			roomCenter=furnishingRoom.collider.bounds.center;
 			shiftedVector=furnishingRoom.transform.position;

@@ -17,9 +17,9 @@ public class PopulatingGuide : MonoBehaviour {
 		}
 	}
 
-	public int smallestXZ=20;
+//	public int smallestXZ=20;
 	//in descending order of importance
-	public string[] bedroomT1_old={"bed","wardrobe","chair","table","bedside_table"};
+//	public string[] bedroomT1_old={"bed","wardrobe","chair","table","bedside_table"};
 
 	//-------------------------------new-----------------------------------
 	public bool isfinished=false;
@@ -32,14 +32,15 @@ public class PopulatingGuide : MonoBehaviour {
 	 * 3rd and so on: together with being populated or not being populated
 	 */
 	string[][] bedroomT1={
-		new string[]{"bed","bedside_table","wardrobe","makeup_desk","chair"},
-		new string[]{"shelf","bedside_table","armchair","soundbox","bookcase"},
-		new string[]{"sofa","teatable"},
-		new string[]{"table","chair"}
+		new string[]{"bed","bedside_table","wardrobe","table","chair"},
+		new string[]{"shelf","bedside_table","armchair","bookcase"},
+		new string[]{"sofa","teatable","soundbox"},
 	};
 	string[][] singlebedroomT1={
-		new string[]{"single_bed","table","chair"},
-		new string[]{"wardrobe","bedside_table","bookcase"}
+		new string[]{"bed","table","chair"},
+		new string[]{"wardrobe","bedside_table"},
+		new string[]{"bookcase","armchair"},
+		new string[]{"shelf","soundbox"}
 	};
 	string[][] livingroomT1={
 		new string[]{"tv","sofa","teatable","bookcase","dining_table"},
@@ -54,7 +55,7 @@ public class PopulatingGuide : MonoBehaviour {
 	string[][] kitchenT1={
 		new string[]{"kitchen_table","fridge","cupboard"},
 		new string[]{"washer","cupboard"},
-		new string[]{"dining_table"}//with chairs
+		new string[]{"dining_table"}//they are suits with chairs
 	};
 	string[][] readingroomT1={
 		new string[]{"table","chair","bookcase"},
@@ -134,7 +135,7 @@ public class PopulatingGuide : MonoBehaviour {
 
 		}else{//single bedroom/reading room/kitchen
 			switch((int)(Random.value*3)%3){
-			case 0: //can be 0...0 and 1...0
+			case 0: //can be 0...0 and 1...0 (I hope singlebedroom can be more than the others)
 				roomType="singlebedroom";
 				furnitureArray=singlebedroomT1;
 				//Debug.Log("is single bedroom");
