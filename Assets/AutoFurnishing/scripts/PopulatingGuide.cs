@@ -49,8 +49,9 @@ public class PopulatingGuide : MonoBehaviour {
 		new string[]{"kitchen_table"}
 	};
 	string[][] bathroomT1={
-		new string[]{"toilet","shower","basins"},//bathtub or shower
-		new string[]{"washer"}
+		new string[]{},//empty
+		new string[]{"basins","toilet","washer"},//bathtub or shower
+		new string[]{"shower"},
 	};
 	string[][] kitchenT1={
 		new string[]{"kitchen_table","fridge","cupboard"},
@@ -109,6 +110,7 @@ public class PopulatingGuide : MonoBehaviour {
 		}//for
 
 		double k=areaRank/AreaSortedRoomIDs.Length;
+		areaRank=k;
 		//2.5/12=0.208333
 		//7.5/12=0.625
 		//10.5/12=0.875

@@ -5,46 +5,30 @@ using System.Collections.Generic;//for List<T>, Queue<T>
 
 public class populatingT1 : MonoBehaviour {
 	//Input:
-	/** Rooms to be furnished: (tested roomtype example result)
-	 * F1:
-	 * room_4_646 ->bedroom
-	 * room_3_644 ->bedroom
-	 * room_2_642 ->bathroom
-	 * room_1_640 ->*reading room*
-	 * 
-	 * G0:
-	 * room_8_653 is living room
-	 * room_11_659 is bathroom
-	 * room_12_661 is *reading room*
-	 * 
-	 * B1:
-	 * room_10_657 is living room
-	 * room_5_648 is *kitchen*
-	 * 
-	 * **:can be single bedroom/kitchen/reading room
-	 */
 	public static string floorName;
 	public static GameObject floorMesh;
 
 	//-------------------Do not support many-to-one----------------------------
 	//e.g. "table to chair", "tv to chair" is not valid
 	public string[][] pairwiseTAG={
-		new string[]{"table","chair"},
-		new string[]{"tv","sofa"},
-		new string[]{"sofa","teatable"},
-		new string[]{"bed","bedside_table"}, 
-		new string[]{"single_bed","bedside_table"}//not all bed needs a bedsidetable...
+		new string[]{"table","chair"},//on Face 2
+		new string[]{"tv","sofa"},//on Face 2, as far as possible
+		new string[]{"sofa","teatable"},//on Face 2
+		new string[]{"bed","bedside_table"}, //on Face 3 or 4, and (itself) Face 5 along wall
+		new string[]{"single_bed","bedside_table"}//not all bed needs a bedsidetable...(as above)
 	};
 	//-----------------------------------------------
 
 
 	public bool isInitialised=false;
 	public bool isStable=false;
-//	public bool isRunning=false;
 	public bool isfinished=false;
+	public bool secondaryPairPopulated=false;
+	
 	
 	List<string> nameList;
-	List<string[]> secondaryPairList;//{its primary pair name, its name}
+	List<string> secondaryPairList;//{its primary pair name, its name}
+	List<string> primaryPairList;
 	Vector3[,] globalBestT1;//(center)(rotation)(extents) for global best record
 	Vector3[,] lastPosition;
 	List<GameObject> boxesT1;
@@ -66,14 +50,32 @@ public class populatingT1 : MonoBehaviour {
 
 	double[] lastSingleScores;
 	public double[] currentSingleScores;
-	public float step;
-	public double beta;
-	public int iteration=0;
-	double distanceFactor;
+	public float step=0.5f;
+	public double beta=0.1;
+	public int[] iteration;
+	double distanceFactor=1;
 	float lastRotationY;
 	
 	// Use this for initialization
 	void Start () {
+	/** Rooms to be furnished: (tested roomtype example result)
+	 * F1:
+	 * room_4_646 ->bedroom
+	 * room_3_644 ->bedroom
+	 * room_2_642 ->bathroom
+	 * room_1_640 ->*reading room*
+	 * 
+	 * G0:
+	 * room_8_653 is living room
+	 * room_11_659 is bathroom
+	 * room_12_661 is *reading room*
+	 * 
+	 * B1:
+	 * room_10_657 is living room
+	 * room_5_648 is *kitchen*
+	 * 
+	 * **:can be single bedroom/kitchen/reading room
+	 */
 		floorName="room_4_646";
 		floorMesh=GameObject.Find(floorName);
 		Room.enabled=true;
@@ -95,15 +97,17 @@ public class populatingT1 : MonoBehaviour {
 			//-----End-----
 			isInitialised=true;
 			lastSumOfScores=currentDistanceScore;
+
+			iteration=new int[nameList.Count];
 		}//if(PopulatingGuide.Instance.isfinished
 
 		if(isInitialised && !isStable){
-			foreach(GameObject box in boxesT1){
-				if(!isInRoom(box)) moveintotheRoom(boxesT1.IndexOf(box));
-			}
+//			foreach(GameObject box in boxesT1){
+//				Debug.LogError("furniture "+box.name+" out");
+//				if(!isInRoom(box)) moveintotheRoom(boxesT1.IndexOf(box));
+//			}
 
 			lastDistanceScore=currentDistanceScore;
-//			getScore();
 			getOverallScore();
 			if(Mathf.Abs((float)(currentDistanceScore-lastDistanceScore))<step){
 				isStable=true;
@@ -147,7 +151,8 @@ public class populatingT1 : MonoBehaviour {
 
 			//compare with globalbest
 			if(currentSumOfScores>=globalBest){
-				Debug.Log("---------------------------------------------FindGlobalBest="+globalBest+"!        ====iteration==="+iteration);
+				Debug.Log("----------------------------------------FindGlobalBest="+globalBest
+				          +"! ====iteration["+(populatingState-1)+"]="+iteration[populatingState-1]);
 				globalBest=currentSumOfScores;
 				recordToGlobalBest();
 			}
@@ -161,6 +166,10 @@ public class populatingT1 : MonoBehaviour {
 			isStable=false;
 		}
 
+
+
+
+
 		if(Input.GetKeyDown(KeyCode.S)){
 			if(Time.timeScale==1){
 				Time.timeScale=0;
@@ -170,6 +179,7 @@ public class populatingT1 : MonoBehaviour {
 			}
 		}
 	}//Update()
+	//==========================================================================================
 
 	void MetropolisHasting(){
 
@@ -180,28 +190,17 @@ public class populatingT1 : MonoBehaviour {
 		if(MHDelta < lnp){
 			Debug.Log("lnp="+lnp);
 			Debug.Log("beta*(currentSumOfScores-lastSumOfScores)="+ MHDelta);
-			if(Random.value<0.95){
-				//the box with lower score compared to singlescore
-				//will be set to last stable position				
-				for(int i=0;i<populatingState;i++){
-					if(currentSingleScores[i]+currentDistanceScore<lastSingleScores[i]+lastDistanceScore){
-						boxesT1[i].transform.position=lastPosition[i,0];
-						boxesT1[i].transform.localEulerAngles=lastPosition[i,1];
-					}
-				}
-			}else{
-				Debug.Log("goToGlobalBest===========================================");
-				
-				goToGlobalBest();
+			for(int i=0;i<populatingState;i++){
+				boxesT1[i].transform.position=lastPosition[i,0];
+				boxesT1[i].transform.localEulerAngles=lastPosition[i,1];
 			}
 							
+		}else if(MHDelta<=0 && iteration[populatingState-1]<500 && Random.value>0.9){
+//			switchAnyTwo();
+//			int k=populatingState-1;
+//			int idx=Mathf.FloorToInt(Random.value*k %k)+1;//won't be the biggest cube
+			jumpOne(populatingState-1);
 		}
-//		else if(populatingState>2 && MHDelta<=0 && step>0.2 && Random.value>0.9){
-////			switchAnyTwo();
-////			int k=populatingState-1;
-////			int idx=Mathf.FloorToInt(Random.value*k %k)+1;//won't be the biggest cube
-//			jumpOne(populatingState-1);
-//		}
 
 	}
 
@@ -233,29 +232,59 @@ public class populatingT1 : MonoBehaviour {
 	}
 
 	void stimulatedAnnealingControl(){
-		iteration++;
-		//stimulated annealing control----------------------------
-		if(iteration> populatingState*populatingState*10){
-			if(populatingState==nameList.Count){
-				step=(float)(step*0.9998);
-			}else{
-				step=(float)(step*0.998);
-			}
-		}
-		if(step<0.1){
-			if(populatingState==nameList.Count){
-				isfinished=true;
-				return;
-			}
+		iteration[populatingState-1]++;
+		if(iteration[populatingState-1]==nameList.Count*100){
 			goToGlobalBest();
-			importInitialFurniture(nameList[populatingState]);
-			step=0.5f;
+//			Debug.LogError("idx="+(populatingState-1));
+//			Debug.LogError("should import "+nameList[populatingState-1]);
+			if(populatingState<nameList.Count){
 
-//			Time.timeScale=0;
-		}else if(step<0.1 && populatingState==nameList.Count){
+				if(isFull()){
+					nameList.RemoveRange(populatingState-1,nameList.Count-populatingState+1);
+				}else{
+					importInitialFurniture(nameList[populatingState-1]);
+				}
+			}
+			step=0.3f;
+			beta=beta+0.2;
+		}
+		else if(iteration[populatingState-1]>populatingState*populatingState*40){
+			step=(float)(step*0.998);
+			if(populatingState==nameList.Count)
+				beta=beta+0.1;
+		}
+		if(step<0.4){
 			beta++;
 		}
-		//--------------------------------------------------------
+
+		if(step<0.05){
+			goToGlobalBest();
+			isfinished=true;
+		}
+
+
+//		//stimulated annealing control old version----------------------------
+//		if(iteration> populatingState*populatingState*10){
+//			if(populatingState==nameList.Count){
+//				step=(float)(step*0.9998);
+//			}else{
+//				step=(float)(step*0.998);
+//			}
+//		}
+//		if(step<0.1){
+//			if(populatingState==nameList.Count){
+//				isfinished=true;
+//				return;
+//			}
+//			goToGlobalBest();
+//			importInitialFurniture(nameList[populatingState]);
+//			step=0.5f;
+//
+////			Time.timeScale=0;
+//		}else if(step<0.1 && populatingState==nameList.Count){
+//			beta++;
+//		}
+//		//--------------------------------------------------------
 	}
 
 	//==========================goToGlobalBest()===================
@@ -286,7 +315,7 @@ public class populatingT1 : MonoBehaviour {
 
 	//============================rotate()========================
 	void rotate(GameObject furniture){
-		lastRotationY=furniture.transform.localEulerAngles.y;
+		lastRotationY=furniture.transform.eulerAngles.y;
 
 		Vector2 A=new Vector2(furniture.transform.position.x,furniture.transform.position.z);
 		int wallID=InRoomRetrieval.FindWall(A);
@@ -301,7 +330,7 @@ public class populatingT1 : MonoBehaviour {
 		
 		float furnitureX=furniture.collider.bounds.extents.x;
 		float furnitureZ=furniture.collider.bounds.extents.z;
-		float furnitureXZ=new Vector2(furnitureX,furnitureZ).magnitude;
+//		float furnitureXZ=new Vector2(furnitureX,furnitureZ).magnitude;
 		
 //		Vector3 from=furniture.transform.localEulerAngles;
 		Vector3 from=new Vector3(0,0,1);
@@ -309,10 +338,10 @@ public class populatingT1 : MonoBehaviour {
 		float rotationY=0;
 
 		//big furniture: same with nearest wall's normal
-		if(walldistance<=furnitureXZ){
+		if(walldistance<=Mathf.Min(furnitureX,furnitureZ)*2){
 			//keep last rotation
 			rotationY=lastRotationY;
-		}else if(walldistance<=furnitureXZ+10){
+		}else if(walldistance<=Mathf.Max(furnitureX,furnitureZ)*2){
 			to=Room.walls[wallID,2];
 			rotationY=Vector3.Angle(from,to);//+(Random.value-0.5f)*5;
 //			if(walldistance<furnitureZ){
@@ -377,6 +406,8 @@ public class populatingT1 : MonoBehaviour {
 	void moveintotheRoom(int id){
 		Vector3 movingDirection;
 		Debug.Log("It's OUT!======================================");
+		jumpOne(id);
+
 //		jumpOne(id);
 
 		//			//put it back to last position
@@ -389,12 +420,12 @@ public class populatingT1 : MonoBehaviour {
 //		movingDirection=movingDirection.normalized;
 //		furniture.rigidbody.MovePosition(furniture.transform.position+ movingDirection*0.2f);
 
-		//moving along nearest wall normal
-		Vector3 Pi=boxesT1[id].collider.bounds.center;
-		int wallID_Pi=InRoomRetrieval.FindWall(new Vector2(Pi.x,Pi.z));
-		movingDirection=Room.walls[wallID_Pi,2];//wall normal
-//		furniture.rigidbody.MovePosition(furniture.transform.position+ movingDirection*0.2f);
-		boxesT1[id].transform.position=boxesT1[id].transform.position+ movingDirection*0.2f;
+//		//moving along nearest wall normal
+//		Vector3 Pi=boxesT1[id].collider.bounds.center;
+//		int wallID_Pi=InRoomRetrieval.FindWall(new Vector2(Pi.x,Pi.z));
+//		movingDirection=Room.walls[wallID_Pi,2];//wall normal
+////		furniture.rigidbody.MovePosition(furniture.transform.position+ movingDirection*0.2f);
+//		boxesT1[id].transform.position=boxesT1[id].transform.position+ movingDirection*0.2f;
 
 	}
 	//-------------------------move()------------------------------
@@ -435,7 +466,7 @@ public class populatingT1 : MonoBehaviour {
 	
 	//-------------------------getScore()------------------------------
 	void getOverallScore(){
-		distanceFactor=1;
+//		distanceFactor=10*nameList.Count/populatingState;
 		getAllDistanceScore();
 		currentSumOfScores=currentDistanceScore;
 		currentSingleScores=new double[populatingState];
@@ -448,17 +479,35 @@ public class populatingT1 : MonoBehaviour {
 
 	void getAllDistanceScore(){
 		double SumsumOfDistance=0;// large= :)
+		/**
+		 * New Distance term, 3D "defined"
+		 */
+		for(int i=0;i<populatingState;i++){
+			Vector3 Pi=boxesT1[i].collider.bounds.center;
+			Vector3 Ei=boxesT1[i].collider.bounds.extents;
+			double newDistance=((Pi-Room.roomCenter).magnitude+Ei.magnitude)/(2*i+1);
+			if(!isInRoom(boxesT1[i])) newDistance=0;
+			SumsumOfDistance+=newDistance;
+		}
+
+
 		for(int i=0;i<populatingState;i++){
 			/**
 			 * Distance term
 			 */
-			Vector3 Pi=boxesT1[i].transform.position;
+			Vector3 Pi=boxesT1[i].collider.bounds.center;
+			Vector3 Ei=boxesT1[i].collider.bounds.extents;
+			float[] distances=new float[populatingState];
 			for(int j=i+1;j<populatingState;j++){
-				Vector3 Pj=boxesT1[j].transform.position;
-				float di=(Pi-Pj).magnitude;
-				SumsumOfDistance=SumsumOfDistance+(Pi-Pj).magnitude;
+				Vector3 Pj=boxesT1[j].collider.bounds.extents;
+				Vector3 Ej=boxesT1[j].collider.bounds.extents;
+				distances[j]=(Pi-Pj).magnitude-Ei.magnitude-Ej.magnitude;
+				distances[j]=Mathf.Max(distances[j],0);
 			}
-		}//for i<populatingState	
+			System.Array.Sort(distances);
+			SumsumOfDistance+=distances[0];//only count the smallest
+		}//for i<populatingState
+
 		currentDistanceScore=distanceFactor*SumsumOfDistance;
 
 //		Debug.Log("    SumsumOfDistance="+SumsumOfDistance);
@@ -491,8 +540,8 @@ public class populatingT1 : MonoBehaviour {
 		                      -A).magnitude-new Vector2(Ei.x,Ei.z).magnitude;
 		cornerdistance=Mathf.Max(cornerdistance,0);
 
-		double NearestWallDistanceScore=100/(walldistance+1)/(i+1);
-		double NearestCornerDistanceScore=100/(cornerdistance+1)/(i+1);
+		double NearestWallDistanceScore=100/(walldistance+1)/(10*i+1)*Ei.y;
+		double NearestCornerDistanceScore=100/(cornerdistance+1)/(10*i+1)*Ei.y;
 
 		/**
 		 * Rotation check
@@ -519,7 +568,7 @@ public class populatingT1 : MonoBehaviour {
 				float heightDelta=Windows[j][1].y-Pi.y;
 				//>0 and even > sum of two extents in Y
 				//alow furniture that a litter higher than window lowest bounds
-				if(heightDelta<Windows[j][2].y*0.8f+Ei.y){
+				if(heightDelta<Windows[j][2].y*0.3f+Ei.y){
 					//cos(theta)
 					Vector3 pointingtoPi=Pi-Windows[j][1];//pointing to Pi
 					pointingtoPi.y=0;
@@ -534,7 +583,12 @@ public class populatingT1 : MonoBehaviour {
 					cosTheta=Vector3.Dot(Room.walls[windowWall,2],pointingtoPi);
 				}//if box is lower than the window, it doesn't matter
 			}//if the box is not near to the window, it's doesn't matter too
-			WindowShieldedScore+=windowDistance/(cosTheta+1);
+			WindowShieldedScore+=windowDistance/(10*cosTheta+1);
+
+			if(cosTheta>0.71){//if cos(theta)>1/sqrt(2)
+				WindowShieldedScore=WindowShieldedScore+(windowDistance+1)/(cosTheta+1)
+					-10/(windowDistance+1);
+			}
 		}
 
 		/**
@@ -542,7 +596,7 @@ public class populatingT1 : MonoBehaviour {
 		 */
 		double FireplaceShieldedScore=0;
 		for(int j=0;j<Fireplaces.GetLength(0);j++){
-			float cosTheta=0;
+			float cosTheta=0;//when theta= 90 degree, very important
 			float FireplaceDistance=0;
 			int fireplaceWall=(int)Fireplaces[j][0].y;
 			//if the box nearest wall is the fireplace wall
@@ -563,7 +617,11 @@ public class populatingT1 : MonoBehaviour {
 				}//else ignore
 			}//else ignore
 
-			FireplaceShieldedScore+=FireplaceDistance/(cosTheta+1);
+			FireplaceShieldedScore+=(FireplaceDistance+1)/(cosTheta+1);
+			if(cosTheta>0.87){//expected narrow than window
+				FireplaceShieldedScore=FireplaceShieldedScore- FireplaceDistance/(cosTheta+1)
+					-10/(FireplaceDistance+1);
+			}
 		}
 
 		/**
@@ -614,6 +672,10 @@ public class populatingT1 : MonoBehaviour {
 //			}
 
 			DoorPathScore+=(DoorDistance+1)/(cosTheta+1);
+			if(cosTheta>0.85){//expected wider than window
+				DoorPathScore=DoorPathScore- DoorDistance/(cosTheta+1)
+					-10/(DoorDistance+1);
+			}
 		}
 //		Debug.Log(boxesT1[i].name+" DoorPathScore become "+DoorPathScore);
 
@@ -658,13 +720,28 @@ public class populatingT1 : MonoBehaviour {
 		string[][] furarray=PopulatingGuide.Instance.furnitureArray;
 		int NumOfItems=furarray[0].Length;
 		foreach(string element in furarray[0]){
+			Debug.LogError(element);
 			nameList.Add(element);
 		}
 
 		//add other furniture randomly
 		int NumOfRows=furarray.GetLength(0);
 		double rank=PopulatingGuide.Instance.areaRank;
-		if(rank>0.5){//is a large room of the house
+//		Debug.LogError(rank);
+		if(nameList.Count==0){
+			//add all furniture from one of rest lines
+			if(NumOfRows>1){
+				int restrows=NumOfRows-1;
+				int rowth=1+ Mathf.FloorToInt(Random.value *restrows %restrows);
+				//Mathf.CeilToInt will exceed idx range
+				foreach(string element in furarray[rowth]){
+			Debug.LogError(element);
+					
+					nameList.Add(element);
+				}
+			}//if numofrow>1
+
+		}else if(rank>0.5){//is a large room of the house
 
 			//add any one in 2nd line
 			NumOfItems=furarray[1].Length;
@@ -674,7 +751,8 @@ public class populatingT1 : MonoBehaviour {
 			//add all furniture from one of rest lines
 			if(NumOfRows>2){
 				int restrows=NumOfRows-2;
-				int rowth=2+ Mathf.FloorToInt(Random.value *restrows %restrows);//Mathf.CeilToInt will exceed idx range
+				int rowth=2+ Mathf.FloorToInt(Random.value *restrows %restrows);
+				//Mathf.CeilToInt will exceed idx range
 				foreach(string element in furarray[rowth]){
 					nameList.Add(element);
 				}
@@ -698,7 +776,8 @@ public class populatingT1 : MonoBehaviour {
 //			Debug.Log(name);
 //		}
 
-		secondaryPairList=new List<string[]>();
+		secondaryPairList=new List<string>();
+		primaryPairList=new List<string>();
 		for(int i=0;i<pairwiseTAG.GetLength(0);i++){
 			string pair1=pairwiseTAG[i][1];
 			//find any pair1 in namelist
@@ -716,8 +795,9 @@ public class populatingT1 : MonoBehaviour {
 						
 						if(name.Equals(pair0)){
 //				Debug.Log("YES! And remove "+nameList[j]);
-							
-							secondaryPairList.Add(new string[]{name,nameList[j]});
+
+							primaryPairList.Add(name);
+							secondaryPairList.Add(nameList[j]);
 							nameList.Remove(nameList[j]);
 							//not allow two pair0 to one pair1
 							break;//foreach
@@ -781,6 +861,21 @@ public class populatingT1 : MonoBehaviour {
 
 	}//determineFurniture()
 
+
+	//---------------------------------------------------------------------
+	bool isFull(){
+		double occupiedArea=0;
+		foreach(GameObject cube in boxesT1){
+			occupiedArea+=cube.collider.bounds.extents.x *cube.collider.bounds.extents.z;
+		}
+		if(occupiedArea>
+		   3/4*floorMesh.collider.bounds.extents.x*floorMesh.collider.bounds.center.z){
+			return true;
+		}else{
+			return false;
+		}
+	}
+
 	void importInitialFurniture(string name){
 		if(populatingState<2){
 			/**
@@ -826,9 +921,9 @@ public class populatingT1 : MonoBehaviour {
 				//with right rotation
 				huge.transform.localEulerAngles=new Vector3(0,rotationY,0);
 				huge.transform.position=position;
-				huge.rigidbody.mass=10;
-				huge.rigidbody.drag=10;
-				huge.rigidbody.angularDrag=0.8f;
+//				huge.rigidbody.mass=nameList.Count+pairwiseTAG.GetLength(0)-populatingState;
+				huge.rigidbody.drag=10*(nameList.Count+pairwiseTAG.GetLength(0)-populatingState);
+				huge.rigidbody.angularDrag=1f;
 				huge.rigidbody.constraints =RigidbodyConstraints.FreezePositionY;
 				huge.rigidbody.freezeRotation=true;
 				huge.rigidbody.interpolation=RigidbodyInterpolation.Extrapolate;
@@ -836,6 +931,8 @@ public class populatingT1 : MonoBehaviour {
 				//it can't be rotate by physics engine
 //				huge.rigidbody.constraints &=~RigidbodyConstraints.FreezeRotationY;
 				huge.rigidbody.rotation=Quaternion.identity;
+				string boxTag=GameObject.Find(name).tag;
+				huge.tag=boxTag;
 				huge.name=name;
 				boxesT1.Add(huge);
 				populatingState++;
@@ -857,23 +954,26 @@ public class populatingT1 : MonoBehaviour {
 		GameObject box;
 		box=GameObject.CreatePrimitive(PrimitiveType.Cube);
 		box.transform.localScale=globalBestT1[populatingState,2]*2;//extents
+//		Debug.LogError("populatingState"+populatingState);
 		Debug.Log(box.transform.localScale);
 		
 		box.AddComponent<BoxCollider>();
 		box.AddComponent<Rigidbody>();
 		box.transform.position=new Vector3(0,box.collider.bounds.extents.y,0)+
 			getRandomPosition(populatingState);
-		box.rigidbody.mass=10;
-		box.rigidbody.drag=10;
+		box.rigidbody.mass=nameList.Count+pairwiseTAG.GetLength(0)-populatingState;
+		box.rigidbody.drag=10*(nameList.Count+pairwiseTAG.GetLength(0)-populatingState);;
 		box.rigidbody.angularDrag=1;
 		box.rigidbody.constraints =RigidbodyConstraints.FreezePositionY;
 		box.rigidbody.freezeRotation=true;
 		box.rigidbody.interpolation=RigidbodyInterpolation.Extrapolate;
 		box.rigidbody.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;
-		box.rigidbody.constraints &=~RigidbodyConstraints.FreezeRotationY;
+//		box.rigidbody.constraints &=~RigidbodyConstraints.FreezeRotationY;
 		//		box.rigidbody.constraints &=RigidbodyConstraints.FreezeRotationX;
 		//		box.rigidbody.constraints &=RigidbodyConstraints.FreezeRotationZ;
 		box.rigidbody.rotation=Quaternion.identity;
+		string boxTag=GameObject.Find(name).tag;
+		box.tag=boxTag;
 		box.name=name;
 		boxesT1.Add(box);
 		populatingState++;
@@ -1004,7 +1104,7 @@ public class populatingT1 : MonoBehaviour {
 				fireplaceBlock.transform.localScale=InRoomRetrieval.Instance.floorplanFurniture[i][2]*2f;				
 				fireplaceBlock.AddComponent<BoxCollider>();
 				int wallID=(int) InRoomRetrieval.Instance.floorplanFurniture[i][0].y;
-				float depth=InRoomRetrieval.Instance.floorplanFurniture[i][3].y;//fireplace depth
+				float depth=InRoomRetrieval.Instance.floorplanFurniture[i][3].y*0.5f;//fireplace depth
 				//position is the fireplace center move towards wall normal with fireplace depth
 				fireplaceBlock.transform.position=InRoomRetrieval.Instance.floorplanFurniture[i][1]+
 					Room.walls[wallID,2]*depth;

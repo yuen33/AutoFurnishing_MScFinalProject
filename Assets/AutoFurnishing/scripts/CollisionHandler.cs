@@ -3,27 +3,27 @@ using System.Collections;
 
 public class CollisionHandler : MonoBehaviour {
 
-	void OnCollisionEnter(Collision col){
-		Vector3 movingDirection;
-//		Debug.Log("It starts to enter the floorplan!======================================");
-		
-		//moving along nearest wall normal
-		Vector3 Pi=col.gameObject.collider.bounds.center;
-		int wallID_Pi=InRoomRetrieval.FindWall(new Vector2(Pi.x,Pi.z));
-		movingDirection=Room.walls[wallID_Pi,2];//wall normal
-		col.gameObject.transform.position=col.gameObject.transform.position+movingDirection*0.01f;
-	}
-
-	void OnCollisionStay(Collision col) {
-		Vector3 movingDirection;
-//		Debug.Log("It Collides!======================================");
-
-		//moving along nearest wall normal
-		Vector3 Pi=col.gameObject.collider.bounds.center;
-		int wallID_Pi=InRoomRetrieval.FindWall(new Vector2(Pi.x,Pi.z));
-		movingDirection=Room.walls[wallID_Pi,2];//wall normal
-		col.gameObject.transform.position=col.gameObject.transform.position+movingDirection*0.2f;
-	}
+//	void OnCollisionEnter(Collision col){
+//		Vector3 movingDirection;
+////		Debug.Log("It starts to enter the floorplan!======================================");
+//		
+//		//moving along nearest wall normal
+//		Vector3 Pi=col.gameObject.collider.bounds.center;
+//		int wallID_Pi=InRoomRetrieval.FindWall(new Vector2(Pi.x,Pi.z));
+//		movingDirection=Room.walls[wallID_Pi,2];//wall normal
+//		col.gameObject.transform.position=col.gameObject.transform.position+movingDirection*0.01f;
+//	}
+//
+//	void OnCollisionStay(Collision col) {
+//		Vector3 movingDirection;
+////		Debug.Log("It Collides!======================================");
+//
+//		//moving along nearest wall normal
+//		Vector3 Pi=col.gameObject.collider.bounds.center;
+//		int wallID_Pi=InRoomRetrieval.FindWall(new Vector2(Pi.x,Pi.z));
+//		movingDirection=Room.walls[wallID_Pi,2];//wall normal
+//		col.gameObject.transform.position=col.gameObject.transform.position+movingDirection*0.02f;
+//	}
 		
 
 //		foreach (ContactPoint contact in collisionInfo.contacts) {
