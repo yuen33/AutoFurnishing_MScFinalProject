@@ -107,7 +107,7 @@ public class Room : MonoBehaviour {
 			/**
 		 * Read txt file find Room floor all corners coordinates
 		 */
-			//read centers coordinates
+			//read corners coordinates
 			reader = theSourceFile.OpenText();
 			text=reader.ReadLine();
 			do{
@@ -141,8 +141,8 @@ public class Room : MonoBehaviour {
 			list.Clear();
 			
 			/**
-		 * Get walls infomation
-		 */
+		 	 * Get walls infomation
+		 	 */
 			int NumOfCorners=floorCorners.Length;
 			walls=new Vector3[NumOfCorners,3];
 			for(int i=0;i<NumOfCorners;i++){
@@ -157,7 +157,8 @@ public class Room : MonoBehaviour {
 				}
 				
 				//calculate the wall normal
-				//Unity is left hand for cross product: http://docs.unity3d.com/ScriptReference/Vector3.Cross.html
+				//Unity is left hand for cross product: 
+				//	http://docs.unity3d.com/ScriptReference/Vector3.Cross.html
 				//and the output wall order is clockwise
 				//in order to point inside the room:
 				//it should be Y-axis cross the wallline pointing to the end point

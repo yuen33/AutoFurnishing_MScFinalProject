@@ -125,6 +125,14 @@ public class RoomAttributes : MonoBehaviour {
 		cornerC.y=roomCenter.y;
 		cornerD=new Vector3(roomCenter.x+roomExtents.x,roomCenter.y,roomCenter.z-roomExtents.z);
 
+		/**
+		 * 		cornerB-------cornerC
+		 * 			|			|
+		 *   		|	room	| 
+		 * 			|			|
+		 * 		cornerA---------cornerD
+		 */
+
 //		getRoomAttributes=true;
 	}
 	
@@ -135,3 +143,5 @@ public class RoomAttributes : MonoBehaviour {
 
 
 }
+
+

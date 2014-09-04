@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using System.Collections;
-//using System.IO;
 using System.Collections.Generic;//for List<T>, Queue<T>
 
 public class populatingT1 : MonoBehaviour {
@@ -22,16 +21,16 @@ public class populatingT1 : MonoBehaviour {
 
 	public bool isInitialised=false;
 	public bool isStable=false;
-	public bool isfinished=false;
-	public bool secondaryPairPopulated=false;
+	public static bool isfinished=false;
+//	public bool secondaryPairPopulated=false;
 	
 	
 	List<string> nameList;
 	List<string> secondaryPairList;//{its primary pair name, its name}
 	List<string> primaryPairList;
-	Vector3[,] globalBestT1;//(center)(rotation)(extents) for global best record
+	public static Vector3[,] globalBestT1;//(center)(rotation)(extents) for global best record
 	Vector3[,] lastPosition;
-	List<GameObject> boxesT1;
+	public static List<GameObject> boxesT1;
 	
 	Vector3[][]Doors;//(namecode,wallID,0)(center)(extents) Vector3(width,depth,height)
 	Vector3[][]Fireplaces;//(namecode,wallID,0)(center)(extents) Vector3(width,depth,height)
@@ -50,8 +49,8 @@ public class populatingT1 : MonoBehaviour {
 
 	double[] lastSingleScores;
 	public double[] currentSingleScores;
-	public float step=0.5f;
-	public double beta=0.1;
+	public float step=0.7f;
+	public double beta=0.2;
 	public int[] iteration;
 	double distanceFactor=1;
 	float lastRotationY;
@@ -168,8 +167,6 @@ public class populatingT1 : MonoBehaviour {
 
 
 
-
-
 		if(Input.GetKeyDown(KeyCode.S)){
 			if(Time.timeScale==1){
 				Time.timeScale=0;
@@ -181,6 +178,9 @@ public class populatingT1 : MonoBehaviour {
 	}//Update()
 	//==========================================================================================
 
+
+	//==========================================================================================
+	
 	void MetropolisHasting(){
 
 		//Metropolis-Hasting
@@ -188,6 +188,7 @@ public class populatingT1 : MonoBehaviour {
 		float lnp= Mathf.Log(Random.value);
 
 		if(MHDelta < lnp){
+			iteration[populatingState-1]--;
 			Debug.Log("lnp="+lnp);
 			Debug.Log("beta*(currentSumOfScores-lastSumOfScores)="+ MHDelta);
 			for(int i=0;i<populatingState;i++){
@@ -195,12 +196,13 @@ public class populatingT1 : MonoBehaviour {
 				boxesT1[i].transform.localEulerAngles=lastPosition[i,1];
 			}
 							
-		}else if(MHDelta<=0 && iteration[populatingState-1]<500 && Random.value>0.9){
-//			switchAnyTwo();
-//			int k=populatingState-1;
-//			int idx=Mathf.FloorToInt(Random.value*k %k)+1;//won't be the biggest cube
-			jumpOne(populatingState-1);
 		}
+//		else if(MHDelta<=0 && iteration[populatingState-1]<500 && Random.value>0.9){
+////			switchAnyTwo();
+////			int k=populatingState-1;
+////			int idx=Mathf.FloorToInt(Random.value*k %k)+1;//won't be the biggest cube
+//			jumpOne(populatingState-1);
+//		}
 
 	}
 
@@ -235,10 +237,11 @@ public class populatingT1 : MonoBehaviour {
 		iteration[populatingState-1]++;
 		if(iteration[populatingState-1]==nameList.Count*100){
 			goToGlobalBest();
+			beta=beta+2;
 //			Debug.LogError("idx="+(populatingState-1));
 //			Debug.LogError("should import "+nameList[populatingState-1]);
 			if(populatingState<nameList.Count){
-
+//				importInitialFurniture(nameList[populatingState-1]);
 				if(isFull()){
 					nameList.RemoveRange(populatingState-1,nameList.Count-populatingState+1);
 				}else{
@@ -246,46 +249,24 @@ public class populatingT1 : MonoBehaviour {
 				}
 			}
 			step=0.3f;
-			beta=beta+0.2;
 		}
 		else if(iteration[populatingState-1]>populatingState*populatingState*40){
 			step=(float)(step*0.998);
 			if(populatingState==nameList.Count)
-				beta=beta+0.1;
+				beta=50;
 		}
-		if(step<0.4){
-			beta++;
-		}
+//		if(step<0.4){
+//			beta++;
+//		}
 
 		if(step<0.05){
 			goToGlobalBest();
 			isfinished=true;
 		}
-
-
-//		//stimulated annealing control old version----------------------------
-//		if(iteration> populatingState*populatingState*10){
-//			if(populatingState==nameList.Count){
-//				step=(float)(step*0.9998);
-//			}else{
-//				step=(float)(step*0.998);
-//			}
-//		}
-//		if(step<0.1){
-//			if(populatingState==nameList.Count){
-//				isfinished=true;
-//				return;
-//			}
-//			goToGlobalBest();
-//			importInitialFurniture(nameList[populatingState]);
-//			step=0.5f;
-//
-////			Time.timeScale=0;
-//		}else if(step<0.1 && populatingState==nameList.Count){
-//			beta++;
-//		}
-//		//--------------------------------------------------------
 	}
+
+
+	
 
 	//==========================goToGlobalBest()===================
 	void goToGlobalBest(){
@@ -314,36 +295,114 @@ public class populatingT1 : MonoBehaviour {
 	}
 
 	//============================rotate()========================
-	void rotate(GameObject furniture){
-		lastRotationY=furniture.transform.eulerAngles.y;
+//	void rotate(GameObject furniture){
+//		Vector3 Pi=furniture.transform.position;
+//		Vector3 Ei=furniture.collider.bounds.extents;
+//		int wallID=InRoomRetrieval.FindWall(new Vector2(Pi.x,Pi.z));
+//
+//		float walldistance=InRoomRetrieval.DistanceToRay2D(
+//			new Vector2(Pi.x,Pi.z),
+//			new Vector2(Room.walls[wallID,0].x,Room.walls[wallID,0].z),
+//			new Vector2(Room.walls[wallID,1].x,Room.walls[wallID,1].z));
+//
+//		if(walldistance<Ei.z+1){
+//			return;
+//		}
+//
+//		Vector3 from=new Vector3(0,0,1);
+//		Vector3 to=Room.walls[wallID,2];
+//		float rotationY=Vector3.Angle(from,to);
+//		if(Pi.x<Room.roomCenter.x && Pi.z<Room.roomCenter.z){
+//			//in III phase
+//			if(rotationY<10){
+//				rotationY=0;
+//			}
+//			if(rotationY>70){rotationY=90;}
+//		}else if(Pi.x<Room.roomCenter.x && Pi.z>Room.roomCenter.z){
+//			//in II phase
+//			if(rotationY>70){
+//				rotationY=90;
+//			}
+//			if(rotationY<10){
+//				rotationY=180;
+//			}
+//		}else if(Pi.x>Room.roomCenter.x && Pi.z>Room.roomCenter.z){
+//			//in I phase
+//			if(rotationY<10){
+//				rotationY=180;
+//			}
+//			if(rotationY>70){
+//				rotationY=270;
+//			}
+//		}else{
+//			//in IV phase
+//			if(rotationY<10){
+//				rotationY=0;
+//			}
+//			if(rotationY>70){
+//				rotationY=270;
+//			}
+//		}
+//
+//
+//
+//
+//
+////		if(Mathf.Acos(Vector3.Dot(wallNormal,new Vector3(0,0,1)))>0.6){
+////			//pointing to z+ axis wall
+////			rotationY=0;
+////		}else if(Mathf.Acos(Vector3.Dot(wallNormal,new Vector3(1,0,0)))>0.6){
+////			//pointing to x+ axis wall
+////			rotationY=90;
+////		}else if(Mathf.Acos(Vector3.Dot(wallNormal,new Vector3(0,0,-1)))>0.6){
+////			//pointing to z- axis wall
+////			rotationY=180;
+////		}else{
+////			//pointing to x- axis wall
+////			rotationY=-90;
+////		}
+//
+//		furniture.transform.localEulerAngles=new Vector3(0,rotationY,0);
+//
+//	}
+	
 
-		Vector2 A=new Vector2(furniture.transform.position.x,furniture.transform.position.z);
-		int wallID=InRoomRetrieval.FindWall(A);
-		int cornerID=findNearestCornerID(new Vector3(A.x,0,A.y));
-		float walldistance=InRoomRetrieval.DistanceToRay2D(
-			A,
-			new Vector2(Room.walls[wallID,0].x,Room.walls[wallID,0].z),
-			new Vector2(Room.walls[wallID,1].x,Room.walls[wallID,1].z));
-		float cornerdistance=(new Vector2(Room.floorCorners[cornerID].x,
-		                                  Room.floorCorners[cornerID].z)
-		                      -A).magnitude;
-		
-		float furnitureX=furniture.collider.bounds.extents.x;
-		float furnitureZ=furniture.collider.bounds.extents.z;
-//		float furnitureXZ=new Vector2(furnitureX,furnitureZ).magnitude;
-		
-//		Vector3 from=furniture.transform.localEulerAngles;
-		Vector3 from=new Vector3(0,0,1);
-		Vector3 to;
-		float rotationY=0;
 
-		//big furniture: same with nearest wall's normal
-		if(walldistance<=Mathf.Min(furnitureX,furnitureZ)*2){
-			//keep last rotation
-			rotationY=lastRotationY;
-		}else if(walldistance<=Mathf.Max(furnitureX,furnitureZ)*2){
-			to=Room.walls[wallID,2];
-			rotationY=Vector3.Angle(from,to);//+(Random.value-0.5f)*5;
+	//----old---
+//	void rotate(GameObject furniture){
+//		lastRotationY=furniture.transform.eulerAngles.y;
+//
+//		Vector2 A=new Vector2(furniture.transform.position.x,furniture.transform.position.z);
+//		int wallID=InRoomRetrieval.FindWall(A);
+//		int cornerID=findNearestCornerID(new Vector3(A.x,0,A.y));
+//
+//		float walldistance=InRoomRetrieval.DistanceToRay2D(
+//			A,
+//			new Vector2(Room.walls[wallID,0].x,Room.walls[wallID,0].z),
+//			new Vector2(Room.walls[wallID,1].x,Room.walls[wallID,1].z));
+//		float cornerdistance=(new Vector2(Room.floorCorners[cornerID].x,
+//		                                  Room.floorCorners[cornerID].z)
+//		                      -A).magnitude;
+//		
+//		float furnitureX=furniture.collider.bounds.extents.x;
+//		float furnitureZ=furniture.collider.bounds.extents.z;
+////		float furnitureXZ=new Vector2(furnitureX,furnitureZ).magnitude;
+//		
+////		Vector3 from=furniture.transform.localEulerAngles;
+//		Vector3 from=new Vector3(0,0,1);
+//		Vector3 to;
+//		float rotationY=0;
+//
+//		//big furniture: same with nearest wall's normal
+//		if(walldistance<=Mathf.Max(furnitureX,furnitureZ)){
+//			return;
+//			//keep last rotation
+////			rotationY=lastRotationY;
+//		}else if(walldistance<=Mathf.Max(furnitureX,furnitureZ)*2){
+//			to=Room.walls[wallID,2];
+//			rotationY=Vector3.Angle(from,to);//+(Random.value-0.5f)*5;
+////			rotationY=Mathf.Acos(Vector3.Dot(from,to))*180/Mathf.PI;
+//			Debug.LogError(furniture.name+"R= "+rotationY);
 //			if(walldistance<furnitureZ){
 //				/**
 //				 * bed-like furniture moving to corner
@@ -372,19 +431,21 @@ public class populatingT1 : MonoBehaviour {
 //
 //				}
 //				rotationY=Vector3.Angle(from,to);
+////				rotationY=Mathf.Acos(Vector3.Dot(from,to))*180/Mathf.PI;
 //
 //			}else{
 //				to=Room.walls[wallID,2];
 //				rotationY=Vector3.Angle(from,to);//+(Random.value-0.5f)*5;
+////				rotationY=Mathf.Acos(Vector3.Dot(from,to))*180/Mathf.PI;
 //			}
-		}//if it near to wall
-		else{//keep last rotation
-			rotationY=lastRotationY;
-		}
-
-		//from now to the nearest wall normal vector
-		furniture.transform.localEulerAngles=new Vector3(0,rotationY,0);
-	}//rotate()
+//		}//if it near to wall
+//		else{//keep last rotation
+//			rotationY=lastRotationY;
+//		}
+//
+//		//from now to the nearest wall normal vector
+//		furniture.transform.localEulerAngles=new Vector3(0,rotationY,0);
+//	}//rotate()
 	
 	//-------------------------move()------------------------------
 	void move(GameObject furniture,int id){
@@ -670,10 +731,12 @@ public class populatingT1 : MonoBehaviour {
 //					//TODO?
 //				}
 //			}
+			float theta=Mathf.Acos(cosTheta)*180/Mathf.PI;
+			DoorPathScore+=DoorDistance*theta;
 
-			DoorPathScore+=(DoorDistance+1)/(cosTheta+1);
-			if(cosTheta>0.85){//expected wider than window
-				DoorPathScore=DoorPathScore- DoorDistance/(cosTheta+1)
+//			DoorPathScore+=(DoorDistance+1)/(cosTheta+1);
+			if(cosTheta>0.8){//expected wider than window
+				DoorPathScore=DoorPathScore- //DoorDistance/(cosTheta+1)
 					-10/(DoorDistance+1);
 			}
 		}
@@ -719,10 +782,14 @@ public class populatingT1 : MonoBehaviour {
 		//add all first line furniture
 		string[][] furarray=PopulatingGuide.Instance.furnitureArray;
 		int NumOfItems=furarray[0].Length;
-		foreach(string element in furarray[0]){
-			Debug.LogError(element);
-			nameList.Add(element);
+		for(int i=0;i<NumOfItems;i++){
+			nameList.Add(furarray[0][i]);
 		}
+
+//		foreach(string element in furarray[0]){
+//			//Debug.LogError(element);
+//			nameList.Add(element);
+//		}
 
 		//add other furniture randomly
 		int NumOfRows=furarray.GetLength(0);
@@ -735,7 +802,7 @@ public class populatingT1 : MonoBehaviour {
 				int rowth=1+ Mathf.FloorToInt(Random.value *restrows %restrows);
 				//Mathf.CeilToInt will exceed idx range
 				foreach(string element in furarray[rowth]){
-			Debug.LogError(element);
+			//Debug.LogError(element);
 					
 					nameList.Add(element);
 				}
@@ -869,7 +936,7 @@ public class populatingT1 : MonoBehaviour {
 			occupiedArea+=cube.collider.bounds.extents.x *cube.collider.bounds.extents.z;
 		}
 		if(occupiedArea>
-		   3/4*floorMesh.collider.bounds.extents.x*floorMesh.collider.bounds.center.z){
+		   2/3*floorMesh.collider.bounds.extents.x*floorMesh.collider.bounds.center.z){
 			return true;
 		}else{
 			return false;
@@ -983,8 +1050,8 @@ public class populatingT1 : MonoBehaviour {
 	Vector3 getRandomPosition(int id){
 		Vector3 randomPosition=new Vector3(0,0,0);
 		Vector3 extentsDifference= Room.roomExtents- globalBestT1[id,2];//extents
-		float radius=Mathf.Sqrt(extentsDifference.x*extentsDifference.x
-		                        + extentsDifference.z *extentsDifference.z);
+//		float radius=Mathf.Sqrt(extentsDifference.x*extentsDifference.x
+//		                        + extentsDifference.z *extentsDifference.z);
 
 		bool isFound=false;
 		do{
