@@ -33,8 +33,9 @@ public class PopulatingGuide : MonoBehaviour {
 	 */
 	string[][] bedroomT1={
 		new string[]{"bed","bedside_table","wardrobe","table","chair"},
-		new string[]{"shelf","bedside_table","armchair","bookcase"},
-		new string[]{"sofa","teatable","soundbox"},
+		new string[]{"shelf","armchair","bookcase"},
+		new string[]{"sofa","teatable"},
+		new string[]{"soundbox"}
 	};
 	string[][] singlebedroomT1={
 		new string[]{"bed","table","chair"},

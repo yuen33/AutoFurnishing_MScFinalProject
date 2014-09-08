@@ -1,8 +1,15 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;//for List<T>, Queue<T>
+using System.IO;
 
 public class populatingT1 : MonoBehaviour {
+	float isFullFactor=0.3f;
+	//for testing
+	string path;
+	string filename;
+	System.IO.StreamWriter file;
+	public int sumOfIterations=0;
 	//Input:
 	public static string floorName;
 	public static GameObject floorMesh;
@@ -49,11 +56,11 @@ public class populatingT1 : MonoBehaviour {
 
 	double[] lastSingleScores;
 	public double[] currentSingleScores;
-	public float step=0.7f;
-	public double beta=0.2;
+	public float step=1f;
+	public double beta=0.1f;
 	public int[] iteration;
 	double distanceFactor=1;
-	float lastRotationY;
+	Vector3 floorplanRotation;
 	
 	// Use this for initialization
 	void Start () {
@@ -80,6 +87,13 @@ public class populatingT1 : MonoBehaviour {
 		Room.enabled=true;
 		boxesT1=new List<GameObject>();
 //		Random.seed=Room.roomID;
+		floorplanRotation=gameObject.transform.eulerAngles;
+
+
+		path="Assets/Autofurnishing/scripts/";
+		filename=floorName+"_NumericalResults.txt";
+		// Write the string to a file.
+		file = new System.IO.StreamWriter(path+filename);
 
 	}
 
@@ -116,14 +130,21 @@ public class populatingT1 : MonoBehaviour {
 		if(isStable && !isfinished){
 			
 			recordLastPosition();
-			stimulatedAnnealingControl();
+			simulatedAnnealingControl();
 
 			//move
 			for(int i=0;i<populatingState;i++){
-				rotate(boxesT1[i]);
+				if(Random.value>0.995){
+					int k=populatingState-1;
+					int idx=Mathf.FloorToInt(Random.value*k %k)+1;//won't be the biggest cube
+					jumpOne(idx);
+				}
+
 				if(!isInRoom(boxesT1[i])){
 					moveintotheRoom(boxesT1.IndexOf(boxesT1[i]));
 				}else{
+					rotate(boxesT1[i]);
+
 					move(boxesT1[i],i);
 				}
 			}
@@ -150,13 +171,13 @@ public class populatingT1 : MonoBehaviour {
 
 			//compare with globalbest
 			if(currentSumOfScores>=globalBest){
-				Debug.Log("----------------------------------------FindGlobalBest="+globalBest
-				          +"! ====iteration["+(populatingState-1)+"]="+iteration[populatingState-1]);
+//				Debug.Log("----------------------------------------FindGlobalBest="+globalBest
+//				          +"! ====iteration["+(populatingState-1)+"]="+iteration[populatingState-1]);
 				globalBest=currentSumOfScores;
 				recordToGlobalBest();
 			}
 
-			MetropolisHasting();
+			MetropolisHastings();
 
 			distanceScoreDifference=currentDistanceScore-lastDistanceScore;
 			sumOfScoresDifference=currentSumOfScores-lastSumOfScores;
@@ -181,13 +202,16 @@ public class populatingT1 : MonoBehaviour {
 
 	//==========================================================================================
 	
-	void MetropolisHasting(){
+	void MetropolisHastings(){
+		sumOfIterations++;
+		writeline(sumOfIterations,currentSumOfScores);
 
-		//Metropolis-Hasting
+		//Metropolis-Hastings
 		double MHDelta=beta*(currentSumOfScores-lastSumOfScores);
 		float lnp= Mathf.Log(Random.value);
 
 		if(MHDelta < lnp){
+//			sumOfIterations--;
 			iteration[populatingState-1]--;
 			Debug.Log("lnp="+lnp);
 			Debug.Log("beta*(currentSumOfScores-lastSumOfScores)="+ MHDelta);
@@ -197,6 +221,7 @@ public class populatingT1 : MonoBehaviour {
 			}
 							
 		}
+
 //		else if(MHDelta<=0 && iteration[populatingState-1]<500 && Random.value>0.9){
 ////			switchAnyTwo();
 ////			int k=populatingState-1;
@@ -233,33 +258,49 @@ public class populatingT1 : MonoBehaviour {
 		}
 	}
 
-	void stimulatedAnnealingControl(){
-		iteration[populatingState-1]++;
-		if(iteration[populatingState-1]==nameList.Count*100){
-			goToGlobalBest();
-			beta=beta+2;
-//			Debug.LogError("idx="+(populatingState-1));
-//			Debug.LogError("should import "+nameList[populatingState-1]);
-			if(populatingState<nameList.Count){
-//				importInitialFurniture(nameList[populatingState-1]);
-				if(isFull()){
-					nameList.RemoveRange(populatingState-1,nameList.Count-populatingState+1);
-				}else{
-					importInitialFurniture(nameList[populatingState-1]);
-				}
-			}
-			step=0.3f;
+	void simulatedAnnealingControl(){
+//		iteration[populatingState-1]++;
+		double iterationTimesCritaria=populatingState*300;
+
+		if(sumOfIterations>iterationTimesCritaria){
+
+			if(sumOfIterations>2.5*iterationTimesCritaria) {
+				beta=10000;
+				step=(float)(step*0.995);
+			}else if(sumOfIterations>2*iterationTimesCritaria) {
+				beta=1000;step=0.5f;
+			}else if(sumOfIterations>iterationTimesCritaria) beta=1;
 		}
-		else if(iteration[populatingState-1]>populatingState*populatingState*40){
-			step=(float)(step*0.998);
-			if(populatingState==nameList.Count)
-				beta=50;
-		}
-//		if(step<0.4){
-//			beta++;
+
+//		if(iteration[populatingState-1]==iterationTimesCritaria){
+//			goToGlobalBest();
+////			beta=beta+2;
+////			Debug.LogError("idx="+(populatingState-1));
+////			Debug.LogError("should import "+nameList[populatingState-1]);
+//			if(populatingState<nameList.Count){
+////				importInitialFurniture(nameList[populatingState]);
+//				if(isFull()){
+//					Debug.LogWarning("Room is not Big Enough. End importing new furniture");
+//					nameList.RemoveRange(populatingState,nameList.Count-populatingState+1);
+//				}else{
+//					importInitialFurniture(nameList[populatingState]);
+//				}
+//			}//if haven't imported all in namelist
+//
+//		}
+//		else if(iteration[populatingState-1]>iterationTimesCritaria){
+//
+//			if(iteration[populatingState-1]>500) beta=1;
+//			if(iteration[populatingState-1]>1000) beta=50;
+//			if(iteration[populatingState-1]>1500) {
+//				beta=5000;
+//				step=(float)(step*0.99);
+//			}
+////			if(populatingState==nameList.Count)
+////				beta=50;
 //		}
 
-		if(step<0.05){
+		if(step<0.1){
 			goToGlobalBest();
 			isfinished=true;
 		}
@@ -279,6 +320,7 @@ public class populatingT1 : MonoBehaviour {
 	//===========================jumpOne()======================
 	void jumpOne(int idx){
 		Vector3 newposition=getRandomPosition(idx);
+		newposition.y=boxesT1[idx].collider.bounds.extents.y+Room.roomCenter.y;
 		boxesT1[idx].transform.position=newposition;
 	}
 
@@ -294,159 +336,74 @@ public class populatingT1 : MonoBehaviour {
 		boxesT1[b].transform.position=lastPosition[a,0];
 	}
 
+
+
 	//============================rotate()========================
-//	void rotate(GameObject furniture){
-//		Vector3 Pi=furniture.transform.position;
-//		Vector3 Ei=furniture.collider.bounds.extents;
-//		int wallID=InRoomRetrieval.FindWall(new Vector2(Pi.x,Pi.z));
-//
-//		float walldistance=InRoomRetrieval.DistanceToRay2D(
-//			new Vector2(Pi.x,Pi.z),
-//			new Vector2(Room.walls[wallID,0].x,Room.walls[wallID,0].z),
-//			new Vector2(Room.walls[wallID,1].x,Room.walls[wallID,1].z));
-//
-//		if(walldistance<Ei.z+1){
-//			return;
+	void rotate(GameObject furniture){
+
+		Vector3 Pi=furniture.collider.bounds.center;
+		Vector3 Ei=furniture.collider.bounds.extents;
+		int wallID=InRoomRetrieval.FindWall(new Vector2(Pi.x,Pi.z));
+
+		float walldistance=InRoomRetrieval.DistanceToRay2D(
+			new Vector2(Pi.x,Pi.z),
+			new Vector2(Room.walls[wallID,0].x,Room.walls[wallID,0].z),
+			new Vector2(Room.walls[wallID,1].x,Room.walls[wallID,1].z));
+
+		Vector3 from=new Vector3(0,0,1);		
+		Vector3 to=Room.walls[wallID,2];
+		float rotationY=Vector3.Angle(from,to);
+		rotationY=rotationY;//-floorplanRotation.y;
+
+		if(Pi.x<Room.roomCenter.x && Pi.z<Room.roomCenter.z){
+			//in III phase
+			if(rotationY<10){
+				rotationY=0;
+			}
+			if(rotationY>70){rotationY=90;}
+		}else if(Pi.x<Room.roomCenter.x && Pi.z>Room.roomCenter.z){
+			//in II phase
+			if(rotationY>70){
+				rotationY=90;
+			}
+			if(rotationY<10){
+				rotationY=180;
+			}
+		}else if(Pi.x>Room.roomCenter.x && Pi.z>Room.roomCenter.z){
+			//in I phase
+			if(rotationY<10){
+				rotationY=180;
+			}
+			if(rotationY>70){
+				rotationY=270;
+			}
+//			Debug.Log("//in I phase, rotationY="+rotationY);
+		}else{
+			//in IV phase
+			if(rotationY<10){
+				rotationY=0;
+			}
+			if(rotationY>70){
+				rotationY=270;
+			}
+//			Debug.Log("//in IV phase, rotationY="+rotationY);
+			
+		}
+
+		if(Ei.z< Ei.x || walldistance >Ei.z){
+			furniture.transform.localEulerAngles=new Vector3(0,rotationY,0);
+//			Debug.LogError(furniture.name+" rotates: "+rotationY);
+		}
+//		else{
+//			Debug.LogError(furniture.name+"--------------------------------");
+//			Debug.LogError(Pi+" room center"+Room.roomCenter);
+//			Debug.LogError(Ei.x+"  x> z?  "+Ei.z);
+//			Debug.LogError(walldistance);
 //		}
-//
-//		Vector3 from=new Vector3(0,0,1);
-//		Vector3 to=Room.walls[wallID,2];
-//		float rotationY=Vector3.Angle(from,to);
-//		if(Pi.x<Room.roomCenter.x && Pi.z<Room.roomCenter.z){
-//			//in III phase
-//			if(rotationY<10){
-//				rotationY=0;
-//			}
-//			if(rotationY>70){rotationY=90;}
-//		}else if(Pi.x<Room.roomCenter.x && Pi.z>Room.roomCenter.z){
-//			//in II phase
-//			if(rotationY>70){
-//				rotationY=90;
-//			}
-//			if(rotationY<10){
-//				rotationY=180;
-//			}
-//		}else if(Pi.x>Room.roomCenter.x && Pi.z>Room.roomCenter.z){
-//			//in I phase
-//			if(rotationY<10){
-//				rotationY=180;
-//			}
-//			if(rotationY>70){
-//				rotationY=270;
-//			}
-//		}else{
-//			//in IV phase
-//			if(rotationY<10){
-//				rotationY=0;
-//			}
-//			if(rotationY>70){
-//				rotationY=270;
-//			}
-//		}
-//
-//
-//
-//
-//
-////		if(Mathf.Acos(Vector3.Dot(wallNormal,new Vector3(0,0,1)))>0.6){
-////			//pointing to z+ axis wall
-////			rotationY=0;
-////		}else if(Mathf.Acos(Vector3.Dot(wallNormal,new Vector3(1,0,0)))>0.6){
-////			//pointing to x+ axis wall
-////			rotationY=90;
-////		}else if(Mathf.Acos(Vector3.Dot(wallNormal,new Vector3(0,0,-1)))>0.6){
-////			//pointing to z- axis wall
-////			rotationY=180;
-////		}else{
-////			//pointing to x- axis wall
-////			rotationY=-90;
-////		}
-//
-//		furniture.transform.localEulerAngles=new Vector3(0,rotationY,0);
-//
-//	}
-	
+
+	}
 
 
-	//----old---
-//	void rotate(GameObject furniture){
-//		lastRotationY=furniture.transform.eulerAngles.y;
-//
-//		Vector2 A=new Vector2(furniture.transform.position.x,furniture.transform.position.z);
-//		int wallID=InRoomRetrieval.FindWall(A);
-//		int cornerID=findNearestCornerID(new Vector3(A.x,0,A.y));
-//
-//		float walldistance=InRoomRetrieval.DistanceToRay2D(
-//			A,
-//			new Vector2(Room.walls[wallID,0].x,Room.walls[wallID,0].z),
-//			new Vector2(Room.walls[wallID,1].x,Room.walls[wallID,1].z));
-//		float cornerdistance=(new Vector2(Room.floorCorners[cornerID].x,
-//		                                  Room.floorCorners[cornerID].z)
-//		                      -A).magnitude;
-//		
-//		float furnitureX=furniture.collider.bounds.extents.x;
-//		float furnitureZ=furniture.collider.bounds.extents.z;
-////		float furnitureXZ=new Vector2(furnitureX,furnitureZ).magnitude;
-//		
-////		Vector3 from=furniture.transform.localEulerAngles;
-//		Vector3 from=new Vector3(0,0,1);
-//		Vector3 to;
-//		float rotationY=0;
-//
-//		//big furniture: same with nearest wall's normal
-//		if(walldistance<=Mathf.Max(furnitureX,furnitureZ)){
-//			return;
-//			//keep last rotation
-////			rotationY=lastRotationY;
-//		}else if(walldistance<=Mathf.Max(furnitureX,furnitureZ)*2){
-//			to=Room.walls[wallID,2];
-//			rotationY=Vector3.Angle(from,to);//+(Random.value-0.5f)*5;
-////			rotationY=Mathf.Acos(Vector3.Dot(from,to))*180/Mathf.PI;
-//			Debug.LogError(furniture.name+"R= "+rotationY);
-//			if(walldistance<furnitureZ){
-//				/**
-//				 * bed-like furniture moving to corner
-//				 * rotate to the direction along the nearest wall
-//				 * from closest corner pointing to the wall's another corner
-//				 */
-//				//find the closest corner is which point of the wall line
-//				int biggestWallIdx=Room.walls.GetLength(0)-1;
-//				if(Room.floorCorners[cornerID]==Room.walls[wallID,0]){
-//					//the nearest corner is the nearest wall's starting point
-//					//so bed should point along the former wall's normal
-//					if(wallID==0){
-//						to=Room.walls[biggestWallIdx,2];
-//					}else{
-//						to=Room.walls[wallID-1,2];
-//					}
-//
-//				}else{
-//					//the nearest corner is the nearest wall's ending point
-//					//so bed should point along the later wall's normal
-//					if(wallID==biggestWallIdx){
-//						to=Room.walls[0,2];
-//					}else{
-//						to=Room.walls[wallID+1,2];
-//					}
-//
-//				}
-//				rotationY=Vector3.Angle(from,to);
-////				rotationY=Mathf.Acos(Vector3.Dot(from,to))*180/Mathf.PI;
-//
-//			}else{
-//				to=Room.walls[wallID,2];
-//				rotationY=Vector3.Angle(from,to);//+(Random.value-0.5f)*5;
-////				rotationY=Mathf.Acos(Vector3.Dot(from,to))*180/Mathf.PI;
-//			}
-//		}//if it near to wall
-//		else{//keep last rotation
-//			rotationY=lastRotationY;
-//		}
-//
-//		//from now to the nearest wall normal vector
-//		furniture.transform.localEulerAngles=new Vector3(0,rotationY,0);
-//	}//rotate()
-	
 	//-------------------------move()------------------------------
 	void move(GameObject furniture,int id){
 //		lastRotationY=furniture.transform.localEulerAngles.y;
@@ -466,7 +423,7 @@ public class populatingT1 : MonoBehaviour {
 	}
 	void moveintotheRoom(int id){
 		Vector3 movingDirection;
-		Debug.Log("It's OUT!======================================");
+//		Debug.Log("It's OUT!======================================");
 		jumpOne(id);
 
 //		jumpOne(id);
@@ -530,46 +487,62 @@ public class populatingT1 : MonoBehaviour {
 //		distanceFactor=10*nameList.Count/populatingState;
 		getAllDistanceScore();
 		currentSumOfScores=currentDistanceScore;
+//		currentSumOfScores=0;
 		currentSingleScores=new double[populatingState];
 		for(int i=0;i<populatingState;i++){
 			getSingleScore(i);
 			currentSumOfScores+=currentSingleScores[i];
 		}
+
 //		Debug.Log("    currentSumOfScores="+currentSumOfScores);
 	}
 
 	void getAllDistanceScore(){
-		double SumsumOfDistance=0;// large= :)
-		/**
-		 * New Distance term, 3D "defined"
-		 */
+		double SumsumOfDistance0=0;
+		double SumsumOfDistance1=0;// large= :)
+		double SumsumOfDistance2=0;// large= :)
+
 		for(int i=0;i<populatingState;i++){
 			Vector3 Pi=boxesT1[i].collider.bounds.center;
-			Vector3 Ei=boxesT1[i].collider.bounds.extents;
-			double newDistance=((Pi-Room.roomCenter).magnitude+Ei.magnitude)/(2*i+1);
-			if(!isInRoom(boxesT1[i])) newDistance=0;
-			SumsumOfDistance+=newDistance;
+			for(int j=i+1;j<populatingState;j++){
+				Vector3 Pj=boxesT1[j].collider.bounds.center;
+				float distance=(new Vector2(Pi.x,Pi.z)-new Vector2(Pj.x,Pj.z)).magnitude;
+				if(!isInRoom(boxesT1[i])) distance=0;
+				SumsumOfDistance0+=distance;
+			}
 		}
 
 
-		for(int i=0;i<populatingState;i++){
-			/**
-			 * Distance term
-			 */
-			Vector3 Pi=boxesT1[i].collider.bounds.center;
-			Vector3 Ei=boxesT1[i].collider.bounds.extents;
-			float[] distances=new float[populatingState];
-			for(int j=i+1;j<populatingState;j++){
-				Vector3 Pj=boxesT1[j].collider.bounds.extents;
-				Vector3 Ej=boxesT1[j].collider.bounds.extents;
-				distances[j]=(Pi-Pj).magnitude-Ei.magnitude-Ej.magnitude;
-				distances[j]=Mathf.Max(distances[j],0);
-			}
-			System.Array.Sort(distances);
-			SumsumOfDistance+=distances[0];//only count the smallest
-		}//for i<populatingState
+//		/**
+//		 * New Distance term, 3D "defined"
+//		 */
+//		for(int i=0;i<populatingState;i++){
+//			Vector3 Pi=boxesT1[i].collider.bounds.center;
+//			Vector3 Ei=boxesT1[i].collider.bounds.extents;
+//			double newDistance=((Pi-Room.roomCenter).magnitude+Ei.magnitude)/(2*i+1);
+//			if(!isInRoom(boxesT1[i])) newDistance=0;
+//			SumsumOfDistance1+=newDistance;
+//		}
+//
+//
+//		for(int i=0;i<populatingState;i++){
+//			/**
+//			 * Distance term
+//			 */
+//			Vector3 Pi=boxesT1[i].collider.bounds.center;
+//			Vector3 Ei=boxesT1[i].collider.bounds.extents;
+//			float[] distances=new float[populatingState];
+//			for(int j=i+1;j<populatingState;j++){
+//				Vector3 Pj=boxesT1[j].collider.bounds.extents;
+//				Vector3 Ej=boxesT1[j].collider.bounds.extents;
+//				distances[j]=(Pi-Pj).magnitude-Ei.magnitude-Ej.magnitude;
+//				distances[j]=Mathf.Max(distances[j],0);
+//			}
+//			System.Array.Sort(distances);
+//			SumsumOfDistance2+=distances[0];//only count the smallest
+//		}//for i<populatingState
 
-		currentDistanceScore=distanceFactor*SumsumOfDistance;
+		currentDistanceScore=distanceFactor*SumsumOfDistance0;
 
 //		Debug.Log("    SumsumOfDistance="+SumsumOfDistance);
 	}//getDistanceScore()
@@ -643,7 +616,14 @@ public class populatingT1 : MonoBehaviour {
 					//the normalized wall normal * pointingtoPi
 					cosTheta=Vector3.Dot(Room.walls[windowWall,2],pointingtoPi);
 				}//if box is lower than the window, it doesn't matter
+				else{
+					WindowShieldedScore=100;
+				}
 			}//if the box is not near to the window, it's doesn't matter too
+			else{
+				WindowShieldedScore=100;
+			}
+
 			WindowShieldedScore+=windowDistance/(10*cosTheta+1);
 
 			if(cosTheta>0.71){//if cos(theta)>1/sqrt(2)
@@ -676,8 +656,14 @@ public class populatingT1 : MonoBehaviour {
 					//the normalized wall normal * pointingtoPi
 					cosTheta=Vector3.Dot(Room.walls[fireplaceWall,2],pointingtoPi);
 				}//else ignore
+				else{
+					FireplaceShieldedScore=100;
+				}
 			}//else ignore
-
+			else{
+				FireplaceShieldedScore=100;
+			}
+			
 			FireplaceShieldedScore+=(FireplaceDistance+1)/(cosTheta+1);
 			if(cosTheta>0.87){//expected narrow than window
 				FireplaceShieldedScore=FireplaceShieldedScore- FireplaceDistance/(cosTheta+1)
@@ -710,6 +696,9 @@ public class populatingT1 : MonoBehaviour {
 				//the normalized wall normal * pointingtoPi
 				cosTheta=Vector3.Dot(Room.walls[doorWall,2],pointingtoPi);
 			}//else it should move far away from doors
+			else{
+				DoorPathScore=100;
+			}
 //			else{
 //				int former;
 //				int latter;
@@ -766,7 +755,7 @@ public class populatingT1 : MonoBehaviour {
 		 */
 		int i=0;
 		foreach(string name in nameList){
-			if(i>1) break;
+			if(isFull()) break;
 			i++;
 			importInitialFurniture(name);
 		}
@@ -784,6 +773,7 @@ public class populatingT1 : MonoBehaviour {
 		int NumOfItems=furarray[0].Length;
 		for(int i=0;i<NumOfItems;i++){
 			nameList.Add(furarray[0][i]);
+			Debug.Log("Furniture tags add: "+furarray[0][i]);
 		}
 
 //		foreach(string element in furarray[0]){
@@ -802,7 +792,7 @@ public class populatingT1 : MonoBehaviour {
 				int rowth=1+ Mathf.FloorToInt(Random.value *restrows %restrows);
 				//Mathf.CeilToInt will exceed idx range
 				foreach(string element in furarray[rowth]){
-			//Debug.LogError(element);
+					Debug.Log("Furniture tags add: "+element);
 					
 					nameList.Add(element);
 				}
@@ -814,7 +804,8 @@ public class populatingT1 : MonoBehaviour {
 			NumOfItems=furarray[1].Length;
 			int idx=Mathf.FloorToInt(Random.value*NumOfItems %NumOfItems);
 			nameList.Add(furarray[1][idx]);
-
+			Debug.Log("Furniture tags add: "+furarray[1][idx]);
+		
 			//add all furniture from one of rest lines
 			if(NumOfRows>2){
 				int restrows=NumOfRows-2;
@@ -822,6 +813,8 @@ public class populatingT1 : MonoBehaviour {
 				//Mathf.CeilToInt will exceed idx range
 				foreach(string element in furarray[rowth]){
 					nameList.Add(element);
+					Debug.Log("Furniture tags add: "+element);
+					
 				}
 			}//if numofrow>2
 
@@ -832,51 +825,52 @@ public class populatingT1 : MonoBehaviour {
 			NumOfItems=furarray[rowth].Length;
 			int idx=Mathf.FloorToInt(Random.value*NumOfItems %NumOfItems);
 			nameList.Add(furarray[rowth][idx]);
+			Debug.Log("Furniture tags add: "+furarray[rowth][idx]);
 
 		}//else: rank<0.25 add nothing more
 
-		/**
-		 * Find out whether there is any pairwise in the nameList
-		 */
-//		Debug.Log(nameList.Count);
-//		foreach(string name in nameList){
-//			Debug.Log(name);
-//		}
-
-		secondaryPairList=new List<string>();
-		primaryPairList=new List<string>();
-		for(int i=0;i<pairwiseTAG.GetLength(0);i++){
-			string pair1=pairwiseTAG[i][1];
-			//find any pair1 in namelist
-//				Debug.Log("-----------------------------pairwisetag i="+i);
-			for(int j=0;j<nameList.Count;j++){
-//				Debug.Log(pair1+" is ?"+nameList[j]);
-				
-				if(pair1.Equals(nameList[j])){
-//				Debug.Log("YES!");
-					
-					string pair0=pairwiseTAG[i][0];
-					//find whether pair0 is in too
-					foreach(string name in nameList){
-//				Debug.Log(nameList[j]+"'s pair0 is?"+name);
-						
-						if(name.Equals(pair0)){
-//				Debug.Log("YES! And remove "+nameList[j]);
-
-							primaryPairList.Add(name);
-							secondaryPairList.Add(nameList[j]);
-							nameList.Remove(nameList[j]);
-							//not allow two pair0 to one pair1
-							break;//foreach
-						}//if find pair0
-					}//foreach in namelist
-				}//if find pair1
-
-				//break;//if break here, pairwise only one to one
-				//if not break here, pairwise can be one to many:
-				//e.g. one bed with two bedside_table
-			}//for loop: try to find pair1 in namelist
-		}//for loop: all pair1 in pairwiseTAG
+//		/**
+//		 * Find out whether there is any pairwise in the nameList
+//		 */
+////		Debug.Log(nameList.Count);
+////		foreach(string name in nameList){
+////			Debug.Log(name);
+////		}
+//
+//		secondaryPairList=new List<string>();
+//		primaryPairList=new List<string>();
+//		for(int i=0;i<pairwiseTAG.GetLength(0);i++){
+//			string pair1=pairwiseTAG[i][1];
+//			//find any pair1 in namelist
+////				Debug.Log("-----------------------------pairwisetag i="+i);
+//			for(int j=0;j<nameList.Count;j++){
+////				Debug.Log(pair1+" is ?"+nameList[j]);
+//				
+//				if(pair1.Equals(nameList[j])){
+////				Debug.Log("YES!");
+//					
+//					string pair0=pairwiseTAG[i][0];
+//					//find whether pair0 is in too
+//					foreach(string name in nameList){
+////				Debug.Log(nameList[j]+"'s pair0 is?"+name);
+//						
+//						if(name.Equals(pair0)){
+////				Debug.Log("YES! And remove "+nameList[j]);
+//
+//							primaryPairList.Add(name);
+//							secondaryPairList.Add(nameList[j]);
+//							nameList.Remove(nameList[j]);
+//							//not allow two pair0 to one pair1
+//							break;//foreach
+//						}//if find pair0
+//					}//foreach in namelist
+//				}//if find pair1
+//
+//				//break;//if break here, pairwise only one to one
+//				//if not break here, pairwise can be one to many:
+//				//e.g. one bed with two bedside_table
+//			}//for loop: try to find pair1 in namelist
+//		}//for loop: all pair1 in pairwiseTAG
 
 //		Debug.Log(nameList.Count);
 //		foreach(string name in nameList){
@@ -897,6 +891,7 @@ public class populatingT1 : MonoBehaviour {
 		int[] indiceT1=new int[nameList.Count];
 		for(int i=0;i<nameList.Count;i++){
 			//Find objects with the tag in name, and choose any one of them
+			Debug.Log("Import furniture with tag="+nameList[i]);
 			GameObject[] gos;
 			gos = GameObject.FindGameObjectsWithTag(nameList[i]);
 			int idx=Mathf.FloorToInt(Random.value* gos.Length %gos.Length);
@@ -935,16 +930,23 @@ public class populatingT1 : MonoBehaviour {
 		foreach(GameObject cube in boxesT1){
 			occupiedArea+=cube.collider.bounds.extents.x *cube.collider.bounds.extents.z;
 		}
-		if(occupiedArea>
-		   2/3*floorMesh.collider.bounds.extents.x*floorMesh.collider.bounds.center.z){
+		Vector3 floorMeshEx=floorMesh.collider.bounds.extents;
+//		Debug.LogWarning("floorMesh extents="+floorMeshEx);
+		double critariaArea=floorMeshEx.x*floorMeshEx.z*isFullFactor;
+
+		Debug.Log(occupiedArea+" < "+critariaArea+" ?");
+
+		if(occupiedArea>critariaArea){
+			Debug.Log("Room is full");
 			return true;
 		}else{
+			Debug.Log("Room is not full");
 			return false;
 		}
 	}
 
 	void importInitialFurniture(string name){
-		if(populatingState<2){
+		if(populatingState<10){
 			/**
 		 	 * Make sure the decided furniture is not too big for the room
 		 	 */
@@ -968,11 +970,11 @@ public class populatingT1 : MonoBehaviour {
 			   wallLengths[wallLengths.Length-1]<PiEx.x*2f){
 				//last one: the longest wall is shorter than this furniture
 				//it will waste too many space even if it could be imported
-				Debug.Log("Unexpected situation: Furniture "+name+"is too large for this room");
+				Debug.LogError("Unexpected situation: Furniture "+name+"is too large for this room");
 				nameList.Remove(name);
 				return;
-			}else if(new Vector2(PiEx.x,PiEx.z).magnitude>=Mathf.Max(RoEx.x,RoEx.z)){
-				Debug.Log(name+" is huge box");
+			}else if(new Vector2(PiEx.x,PiEx.z).magnitude>=Mathf.Max(RoEx.x,RoEx.z)-1){
+				Debug.LogWarning(name+" is huge box");
 				//extremly big furniture but importable with fixed suitable rotation
 				//e.g. a kitchen oven ect. table can fill half kitchen
 				//put it in center and with longest wall normal rotation
@@ -982,7 +984,7 @@ public class populatingT1 : MonoBehaviour {
 				GameObject huge;
 				huge=GameObject.CreatePrimitive(PrimitiveType.Cube);
 				huge.transform.localScale=PiEx*2;//extentes
-				Debug.Log(huge.transform.localScale);
+//				Debug.Log(huge.transform.localScale);
 				huge.AddComponent<BoxCollider>();
 				huge.AddComponent<Rigidbody>();
 				//with right rotation
@@ -990,13 +992,13 @@ public class populatingT1 : MonoBehaviour {
 				huge.transform.position=position;
 //				huge.rigidbody.mass=nameList.Count+pairwiseTAG.GetLength(0)-populatingState;
 				huge.rigidbody.drag=10*(nameList.Count+pairwiseTAG.GetLength(0)-populatingState);
-				huge.rigidbody.angularDrag=1f;
+				huge.rigidbody.angularDrag=0f;
 				huge.rigidbody.constraints =RigidbodyConstraints.FreezePositionY;
 				huge.rigidbody.freezeRotation=true;
 				huge.rigidbody.interpolation=RigidbodyInterpolation.Extrapolate;
 				huge.rigidbody.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;
 				//it can't be rotate by physics engine
-//				huge.rigidbody.constraints &=~RigidbodyConstraints.FreezeRotationY;
+				huge.rigidbody.constraints &=~RigidbodyConstraints.FreezeRotationY;
 				huge.rigidbody.rotation=Quaternion.identity;
 				string boxTag=GameObject.Find(name).tag;
 				huge.tag=boxTag;
@@ -1022,7 +1024,7 @@ public class populatingT1 : MonoBehaviour {
 		box=GameObject.CreatePrimitive(PrimitiveType.Cube);
 		box.transform.localScale=globalBestT1[populatingState,2]*2;//extents
 //		Debug.LogError("populatingState"+populatingState);
-		Debug.Log(box.transform.localScale);
+//		Debug.Log(box.transform.localScale);
 		
 		box.AddComponent<BoxCollider>();
 		box.AddComponent<Rigidbody>();
@@ -1030,12 +1032,12 @@ public class populatingT1 : MonoBehaviour {
 			getRandomPosition(populatingState);
 		box.rigidbody.mass=nameList.Count+pairwiseTAG.GetLength(0)-populatingState;
 		box.rigidbody.drag=10*(nameList.Count+pairwiseTAG.GetLength(0)-populatingState);;
-		box.rigidbody.angularDrag=1;
+		box.rigidbody.angularDrag=0f;
 		box.rigidbody.constraints =RigidbodyConstraints.FreezePositionY;
 		box.rigidbody.freezeRotation=true;
 		box.rigidbody.interpolation=RigidbodyInterpolation.Extrapolate;
 		box.rigidbody.collisionDetectionMode=CollisionDetectionMode.ContinuousDynamic;
-//		box.rigidbody.constraints &=~RigidbodyConstraints.FreezeRotationY;
+		box.rigidbody.constraints &=~RigidbodyConstraints.FreezeRotationY;
 		//		box.rigidbody.constraints &=RigidbodyConstraints.FreezeRotationX;
 		//		box.rigidbody.constraints &=RigidbodyConstraints.FreezeRotationZ;
 		box.rigidbody.rotation=Quaternion.identity;
@@ -1210,6 +1212,10 @@ public class populatingT1 : MonoBehaviour {
 		return RandomList;
 	}//getRandomList()
 
+	//data output for testing numerical result in Matlab
+	void writeline(int x, double y){
+		file.WriteLine(x.ToString() + " " + y.ToString());
+	}
 
 
 }//Class

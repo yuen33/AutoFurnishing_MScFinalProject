@@ -62,21 +62,33 @@
      <None Include="Assets\Standard Assets (Mobile)\Shaders\Particle Shaders\Mobile Multiply Culled.shader" />
      <None Include="Assets\Standard Assets (Mobile)\Shaders\Miscellaneous Shaders\Mobile Background.shader" />
      <None Include="Assets\Standard Assets\Projectors\Sources\Shaders\Projector Multiply.shader" />
+     <None Include="Assets\AutoFurnishing\scripts\TestingResults_v0\room_4_646_NumericalResults.txt" />
      <None Include="Assets\Standard Assets (Mobile)\Shaders\Vertex Colored Shaders\Mobile Transparent Vertex Color.shader" />
+     <None Include="Assets\AutoFurnishing\scripts\TestingResults_v0\floorplan furniture only\room_4_646_NumericalResults.txt" />
      <None Include="Assets\AutoFurnishing\scripts\room_1_640.txt" />
      <None Include="Assets\AutoFurnishing\scripts\room_4_646.txt" />
+     <None Include="Assets\AutoFurnishing\scripts\TestingResults_v0\room_4_646.txt" />
+     <None Include="Assets\AutoFurnishing\scripts\room_2_642_NumericalResults.txt" />
+     <None Include="Assets\AutoFurnishing\scripts\room_4_646_NumericalResults.txt" />
      <None Include="Assets\Standard Assets (Mobile)\Shaders\Miscellaneous Shaders\Mobile Detail.shader" />
      <None Include="Assets\AutoFurnishing\scripts\floorplanFurniture.txt" />
+     <None Include="Assets\AutoFurnishing\scripts\TestingResults_v0\wall only\room_4_646.txt" />
+     <None Include="Assets\AutoFurnishing\scripts\TestingResults_v0\floorplan furniture only\room_4_646.txt" />
      <None Include="Assets\AutoFurnishing\scripts\room_3_644.txt" />
      <None Include="Assets\Standard Assets\Projectors\Sources\Shaders\Projector Light.shader" />
      <None Include="Assets\Standard Assets (Mobile)\Shaders\Lightmap Shaders (Legacy)\Mobile Lightmap Reflective.shader" />
      <None Include="Assets\Standard Assets (Mobile)\Shaders\Particle Shaders\Mobile Particles Additive Culled.shader" />
+     <None Include="Assets\AutoFurnishing\scripts\TestingResults_v0\wall only\room_4_646_NumericalResults.txt" />
      <None Include="Assets\AutoFurnishing\scripts\rooms_v0.txt" />
+     <None Include="Assets\AutoFurnishing\scripts\TestingResults_v0\room_3_644_NumericalResults.txt" />
+     <None Include="Assets\AutoFurnishing\scripts\TestingResults_v0\room_3_644.txt" />
      <None Include="Assets\AutoFurnishing\scripts\rooms.txt" />
      <None Include="Assets\Standard Assets (Mobile)\Shaders\Vertex Colored Shaders\Mobile Vertex Colored.shader" />
      <None Include="Assets\Standard Assets (Mobile)\Shaders\Lightmap Shaders (Legacy)\Mobile Lightmap Only.shader" />
      <None Include="Assets\Standard Assets (Mobile)\Shaders\Lightmap Shaders (Legacy)\Mobile Lightmap AlphaTest.shader" />
+     <None Include="Assets\AutoFurnishing\scripts\room_3_644_NumericalResults.txt" />
      <None Include="Assets\AutoFurnishing\scripts\room_2_642.txt" />
+     <None Include="Assets\AutoFurnishing\scripts\room_1_640_NumericalResults.txt" />
  <Reference Include="Assembly-UnityScript-firstpass">
  <HintPath>/Users/yoclination/InteriorArrangement/AutoFurnishing_MScFinalProjectFinalVersion/Unity3DProject/Library/ScriptAssemblies/Assembly-UnityScript-firstpass.dll</HintPath>
  </Reference>

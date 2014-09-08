@@ -68,7 +68,7 @@ public class InRoomRetrieval : MonoBehaviour {
 	public static float DistanceToRay2D(Vector2 A, Vector2 B, Vector2 C){
 		Ray ray=new Ray(B,C-B);
 		float distance=Vector3.Cross(ray.direction,A-B).magnitude;
-		distance=distance/(B-C).magnitude;
+//		distance=distance/(B-C).magnitude;
 //		Debug.Log("distance="+distance);
 		return distance;
 	}
