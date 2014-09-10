@@ -10,6 +10,7 @@ public class ReadFurnishedRoom : MonoBehaviour {
 	protected string text = " "; // assigned to allow first line to be read below
 
 	string path="Assets/Autofurnishing/scripts/";
+	bool isfinished=false;
 	
 	string[] fileName;//room name
 
@@ -49,12 +50,22 @@ public class ReadFurnishedRoom : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-		if(Input.GetKeyDown(KeyCode.S)){
-			readfile(fileName[0]);
+//		if(Input.GetKeyDown(KeyCode.S)){
+		if(!isfinished){
+//			readfile(fileName[0]);
+//			readfile(fileName[1]);
+//			readfile(fileName[2]);
+//			readfile(fileName[3]);
+//			readfile(fileName[4]);
+//			readfile(fileName[5]);
+//			readfile(fileName[6]);
+//			readfile(fileName[7]);
 
-//			for(int i=0;i<9;i++){
-//				readfile(fileName[i]);
-//			}
+			for(int i=0;i<9;i++){
+				readfile(fileName[i]);
+			}
+
+			isfinished=true;
 		}//if press s
 	}
 

@@ -128,7 +128,7 @@ public class InRoomRetrieval : MonoBehaviour {
 						int lastOne=word.Length-1;
 						int namecode=0;
 //						Debug.Log("-------------------"+word[lastOne]);
-						if(word[lastOne].Equals("door")){
+						if(word[lastOne].Equals("door")||word[lastOne].Equals("Staircase")){
 							namecode=1;
 						}else if(word[lastOne].Equals("window")){
 							namecode=2;

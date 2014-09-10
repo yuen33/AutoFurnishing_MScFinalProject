@@ -4,7 +4,7 @@ using System.Collections.Generic;//for List<T>, Queue<T>
 using System.IO;
 
 public class populatingT1 : MonoBehaviour {
-	float isFullFactor=0.3f;
+	float isFullFactor=0.4f;
 	//for testing
 	string path;
 	string filename;
@@ -59,7 +59,7 @@ public class populatingT1 : MonoBehaviour {
 	public float step=1f;
 	public double beta=0.1f;
 	public int[] iteration;
-	double distanceFactor=1;
+	double distanceFactor=10;
 	Vector3 floorplanRotation;
 	
 	// Use this for initialization
@@ -82,13 +82,12 @@ public class populatingT1 : MonoBehaviour {
 	 * 
 	 * **:can be single bedroom/kitchen/reading room
 	 */
-		floorName="room_4_646";
+		floorName="room_5_648";
 		floorMesh=GameObject.Find(floorName);
 		Room.enabled=true;
 		boxesT1=new List<GameObject>();
 //		Random.seed=Room.roomID;
 		floorplanRotation=gameObject.transform.eulerAngles;
-
 
 		path="Assets/Autofurnishing/scripts/";
 		filename=floorName+"_NumericalResults.txt";
@@ -143,10 +142,9 @@ public class populatingT1 : MonoBehaviour {
 				if(!isInRoom(boxesT1[i])){
 					moveintotheRoom(boxesT1.IndexOf(boxesT1[i]));
 				}else{
-					rotate(boxesT1[i]);
-
 					move(boxesT1[i],i);
 				}
+				rotate(boxesT1[i]);
 			}
 
 			/**
@@ -234,6 +232,7 @@ public class populatingT1 : MonoBehaviour {
 	void recordToGlobalBest(){
 //		globalBestT1=new Vector3[nameList.Count,3];
 		for(int i=0;i<populatingState;i++){
+			rotate(boxesT1[i]);
 			globalBestT1[i,0]=boxesT1[i].collider.bounds.center;
 			globalBestT1[i,1]=new Vector3(0,0,0);
 			globalBestT1[i,1].y=boxesT1[i].transform.localEulerAngles.y;
@@ -319,6 +318,7 @@ public class populatingT1 : MonoBehaviour {
 
 	//===========================jumpOne()======================
 	void jumpOne(int idx){
+		if(PopulatingGuide.Instance.areaRank<0.4) return;
 		Vector3 newposition=getRandomPosition(idx);
 		newposition.y=boxesT1[idx].collider.bounds.extents.y+Room.roomCenter.y;
 		boxesT1[idx].transform.position=newposition;
@@ -353,37 +353,37 @@ public class populatingT1 : MonoBehaviour {
 		Vector3 from=new Vector3(0,0,1);		
 		Vector3 to=Room.walls[wallID,2];
 		float rotationY=Vector3.Angle(from,to);
-		rotationY=rotationY;//-floorplanRotation.y;
+//		rotationY=rotationY-floorplanRotation.y;
 
 		if(Pi.x<Room.roomCenter.x && Pi.z<Room.roomCenter.z){
 			//in III phase
-			if(rotationY<10){
+			if(rotationY<40){
 				rotationY=0;
 			}
-			if(rotationY>70){rotationY=90;}
+			if(rotationY>50){rotationY=90;}
 		}else if(Pi.x<Room.roomCenter.x && Pi.z>Room.roomCenter.z){
 			//in II phase
-			if(rotationY>70){
+			if(rotationY>50 && rotationY <130){
 				rotationY=90;
 			}
-			if(rotationY<10){
+			if(rotationY<40 || rotationY >140){
 				rotationY=180;
 			}
 		}else if(Pi.x>Room.roomCenter.x && Pi.z>Room.roomCenter.z){
 			//in I phase
-			if(rotationY<10){
+			if(rotationY<40 || rotationY >140){
 				rotationY=180;
 			}
-			if(rotationY>70){
+			if(rotationY>50 && rotationY <130){
 				rotationY=270;
 			}
 //			Debug.Log("//in I phase, rotationY="+rotationY);
 		}else{
 			//in IV phase
-			if(rotationY<10){
+			if(rotationY<40){
 				rotationY=0;
 			}
-			if(rotationY>70){
+			if(rotationY>50){
 				rotationY=270;
 			}
 //			Debug.Log("//in IV phase, rotationY="+rotationY);
@@ -542,6 +542,7 @@ public class populatingT1 : MonoBehaviour {
 //			SumsumOfDistance2+=distances[0];//only count the smallest
 //		}//for i<populatingState
 
+//		currentDistanceScore=distanceFactor*(SumsumOfDistance1+SumsumOfDistance2);
 		currentDistanceScore=distanceFactor*SumsumOfDistance0;
 
 //		Debug.Log("    SumsumOfDistance="+SumsumOfDistance);
@@ -626,7 +627,7 @@ public class populatingT1 : MonoBehaviour {
 
 			WindowShieldedScore+=windowDistance/(10*cosTheta+1);
 
-			if(cosTheta>0.71){//if cos(theta)>1/sqrt(2)
+			if(cosTheta>0.8){//0.71 if cos(theta)>1/sqrt(2)
 				WindowShieldedScore=WindowShieldedScore+(windowDistance+1)/(cosTheta+1)
 					-10/(windowDistance+1);
 			}
@@ -699,34 +700,13 @@ public class populatingT1 : MonoBehaviour {
 			else{
 				DoorPathScore=100;
 			}
-//			else{
-//				int former;
-//				int latter;
-//				switch(doorCorner){
-//				case 0:
-//					former=Room.floorCorners.Length-1;
-//					latter=doorCorner+1;
-//					break;
-//				case Room.floorCorners.Length-1:
-//					former=doorCorner-1;
-//					latter=0;
-//					break;
-//				default:
-//					former=doorCorner-1;
-//					latter=doorCorner+1;
-//					break;
-//				}
-//				if(cornerID==former || cornerID==latter){
-//					//TODO?
-//				}
-//			}
 			float theta=Mathf.Acos(cosTheta)*180/Mathf.PI;
 			DoorPathScore+=DoorDistance*theta;
 
 //			DoorPathScore+=(DoorDistance+1)/(cosTheta+1);
-			if(cosTheta>0.8){//expected wider than window
+			if(cosTheta>0.71){//expected wider than window
 				DoorPathScore=DoorPathScore- //DoorDistance/(cosTheta+1)
-					-10/(DoorDistance+1);
+					-100/(DoorDistance+1);
 			}
 		}
 //		Debug.Log(boxesT1[i].name+" DoorPathScore become "+DoorPathScore);
@@ -739,7 +719,7 @@ public class populatingT1 : MonoBehaviour {
 //		Debug.Log("FireplaceShieldedScore "+FireplaceShieldedScore);
 
 		currentSingleScores[i]=
-			NearestWallDistanceScore+NearestCornerDistanceScore
+			20*NearestWallDistanceScore+NearestCornerDistanceScore
 				+DoorPathScore+WindowShieldedScore+FireplaceShieldedScore;
 
 	}//getSingleScore()
@@ -755,7 +735,10 @@ public class populatingT1 : MonoBehaviour {
 		 */
 		int i=0;
 		foreach(string name in nameList){
-			if(isFull()) break;
+			if(isFull()){
+				if(i==1) break;
+				else continue;
+			}
 			i++;
 			importInitialFurniture(name);
 		}

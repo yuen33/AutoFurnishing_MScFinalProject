@@ -1,19 +1,19 @@
 ﻿<Properties>
-  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="Assets/AutoFurnishing/scripts/populatingT1.cs">
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" PreferredExecutionTarget="MonoDevelop.Default" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="Assets/AutoFurnishing/scripts/ReadFurnishedRoom.cs">
     <Files>
-      <File FileName="Assets/AutoFurnishing/scripts/Bed.cs" Line="117" Column="10" />
-      <File FileName="Assets/AutoFurnishing/scripts/populatingT1.cs" Line="23" Column="65" />
+      <File FileName="Assets/AutoFurnishing/scripts/populatingT1.cs" Line="7" Column="24" />
+      <File FileName="Assets/AutoFurnishing/scripts/ReadFurnishedRoom.cs" Line="54" Column="17" />
+      <File FileName="Assets/AutoFurnishing/scripts/PopulatingGuide.cs" Line="44" Column="32" />
+      <File FileName="Assets/AutoFurnishing/scripts/InRoomRetrieval.cs" Line="188" Column="16" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>
     <BreakpointStore>
-      <Breakpoint file="/Users/yoclination/InteriorArrangement/AutoFurnishing_MScFinalProjectFinalVersion/Unity3DProject/Assets/AutoFurnishing/scripts/populatingT1.cs" line="89" />
-      <Breakpoint file="/Users/yoclination/InteriorArrangement/AutoFurnishing_MScFinalProjectFinalVersion/Unity3DProject/Assets/AutoFurnishing/scripts/populatingT1.cs" line="293" />
-      <Breakpoint file="/Users/yoclination/InteriorArrangement/AutoFurnishing_MScFinalProjectFinalVersion/Unity3DProject/Assets/AutoFurnishing/scripts/populatingT1.cs" line="545" />
-      <Breakpoint file="/Users/yoclination/InteriorArrangement/AutoFurnishing_MScFinalProjectFinalVersion/Unity3DProject/Assets/AutoFurnishing/scripts/populatingT1.cs" line="758" />
-      <Breakpoint file="/Users/yoclination/InteriorArrangement/AutoFurnishing_MScFinalProjectFinalVersion/Unity3DProject/Assets/AutoFurnishing/scripts/populatingT1.cs" line="137" />
-      <Breakpoint file="/Users/yoclination/InteriorArrangement/AutoFurnishing_MScFinalProjectFinalVersion/Unity3DProject/Assets/AutoFurnishing/scripts/populatingT1.cs" line="489" />
+      <Breakpoint file="/Users/yoclination/InteriorArrangement/AutoFurnishing_MScFinalProjectFinalVersion/Unity3DProject/Assets/AutoFurnishing/scripts/populatingT1.cs" line="296" />
+      <Breakpoint file="/Users/yoclination/InteriorArrangement/AutoFurnishing_MScFinalProjectFinalVersion/Unity3DProject/Assets/AutoFurnishing/scripts/populatingT1.cs" line="493" />
+      <Breakpoint file="/Users/yoclination/InteriorArrangement/AutoFurnishing_MScFinalProjectFinalVersion/Unity3DProject/Assets/AutoFurnishing/scripts/InRoomRetrieval.cs" line="187" />
+      <Breakpoint file="/Users/yoclination/InteriorArrangement/AutoFurnishing_MScFinalProjectFinalVersion/Unity3DProject/Assets/AutoFurnishing/scripts/populatingT1.cs" line="721" />
     </BreakpointStore>
   </MonoDevelop.Ide.DebuggingService.Breakpoints>
   <MonoDevelop.Ide.DebuggingService.PinnedWatches />

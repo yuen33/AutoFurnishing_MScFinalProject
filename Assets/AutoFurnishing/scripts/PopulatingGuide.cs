@@ -38,31 +38,33 @@ public class PopulatingGuide : MonoBehaviour {
 		new string[]{"soundbox"}
 	};
 	string[][] singlebedroomT1={
-		new string[]{"bed","table","chair"},
-		new string[]{"wardrobe","bedside_table"},
-		new string[]{"bookcase","armchair"},
-		new string[]{"shelf","soundbox"}
+		new string[]{"single_bed"},
+		new string[]{"bedside_table"},
+		new string[]{"armchair","bookcase"},
+		new string[]{"table","chair"}
 	};
 	string[][] livingroomT1={
-		new string[]{"tv","sofa","teatable","bookcase","dining_table"},
-		new string[]{"table","armchair"},
-		new string[]{"shelf","soundbox"},
+		new string[]{"sofa","dining_table","tv"},
+		new string[]{"bookcase","teatable","chair"},
+		new string[]{"armchair","soundbox"},
+		new string[]{"shelf"},
 		new string[]{"kitchen_table"}
 	};
 	string[][] bathroomT1={
 		new string[]{},//empty
 		new string[]{"basins","toilet","washer"},//bathtub or shower
-		new string[]{"shower"},
+		new string[]{"shower","basins"},
 	};
 	string[][] kitchenT1={
-		new string[]{"kitchen_table","fridge","cupboard"},
-		new string[]{"washer","cupboard"},
-		new string[]{"dining_table"}//they are suits with chairs
+		new string[]{"dining_table","plant"},
+		new string[]{"cupboard","kitchen_table"},
+		new string[]{"washer"},
+		new string[]{"fridge"}//they are suits with chairs
 	};
 	string[][] readingroomT1={
 		new string[]{"table","chair","bookcase"},
 		new string[]{"sofa","shelf","wardrobe"},
-		new string[]{"doublechairs"}
+		new string[]{"armchair"},
 	};
 
 	protected FileInfo theSourceFile = null;
